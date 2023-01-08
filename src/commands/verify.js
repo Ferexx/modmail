@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js')
 const { channels } = require('../bot')
 const threads = require('../data/threads')
+const utils = require('../utils')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -22,7 +23,7 @@ module.exports = {
             option.setName('gender')
                 .setDescription('m or f')
                 .setRequired(true)),
-    
+
     async execute(interaction) {
         const thread = await threads.findOpenThreadByChannelId(interaction.channelId)
         if (!thread) {
@@ -35,7 +36,7 @@ module.exports = {
             return
         }
 
-        const verificationChannel = utils.getMainGuils()[0].channels.cache.find(channel => channel.name === 'verified')
+        const verificationChannel = utils.getMainGuilds().at(0).channels.cache.find(channel => channel.name === 'verified')
 
         verificationChannel.send({ embeds: [{"description": "**Member:**\n<@" + thread.user_id + ">\n**DOB**:\n" + interaction.options.getInteger('day') + "/" + interaction.options.getInteger('month') + "/" + interaction.options.getInteger('year') + "\n**Verified By:**\n<@" + interaction.member.id + ">" }]})
         member = await utils.getMainGuilds()[0].members.fetch(thread.user_id)

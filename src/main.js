@@ -41,7 +41,7 @@ module.exports = {
     console.log("Connecting to Discord...");
 
     bot.once("ready", async () => {
-      console.log("Connected! Waiting for servers to become available...");
+      console.log(`Connected as ${bot.user.tag}! Waiting for servers to become available...`);
 
       await (new Promise(resolve => {
         const waitNoteTimeout = setTimeout(() => {
@@ -83,9 +83,7 @@ module.exports = {
       const pluginResult = await loadAllPlugins();
       console.log(`Loaded ${pluginResult.loadedCount} plugins (${pluginResult.baseCount} built-in plugins, ${pluginResult.externalCount} external plugins)`);
 
-      console.log("");
-      console.log("Done! Now listening to DMs.");
-      console.log("");
+      console.log("\nDone! Now listening to DMs.\n");
 
       const openThreads = await threads.getAllOpenThreads();
       for (const thread of openThreads) {
@@ -203,6 +201,17 @@ function initBaseMessageHandlers() {
               await thread.sendSystemMessageToUser(responseMessage, { postToThreadChannel });
             } catch (err) {
               await thread.postSystemMessage(`**NOTE:** Could not send auto-response to the user. The error given was: \`${err.message}\``);
+            }
+          }
+          if (config.verifyMessage) {
+            try {
+              const member = await utils.getMainGuilds().at(0).members.fetch(msg.author.id)
+              if (member.roles.cache.find(role => role.name === 'unverified')) {
+                const verifyMessage = utils.readMultilineConfigValue(config.verifyMessage)
+                await thread.sendSystemMessageToUser(verifyMessage)
+              }
+            } catch (err) {
+              console.log(err)
             }
           }
         }

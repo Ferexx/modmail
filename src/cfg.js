@@ -112,7 +112,7 @@ if (loadedEnvValues > 0) {
 // Convert config keys with periods to objects
 // E.g. commandAliases.mv -> commandAliases: { mv: ... }
 for (const [key, value] of Object.entries(config)) {
-  if (! key.includes(".")) continue;
+  if (!key.includes(".")) continue;
 
   const keys = key.split(".");
   let cursor = config;
@@ -222,7 +222,7 @@ ajv.addKeyword({
   keyword: "coerceBoolean",
   compile() {
     return (value, ctx) => {
-      if (! value) {
+      if (!value) {
         // Disabled -> no coercion
         return true;
       }
@@ -286,7 +286,7 @@ if (!configIsValid) {
 
 const validStreamingUrlRegex = /^https:\/\/(www\.)?twitch.tv\/[a-z\d_\-]+\/?$/i;
 if (config.statusType === "streaming") {
-  if (! validStreamingUrlRegex.test(config.statusUrl)) {
+  if (!validStreamingUrlRegex.test(config.statusUrl)) {
     exitWithConfigurationErrors([
       "When statusType is set to \"streaming\", statusUrl must be set to a valid Twitch channel URL, such as https://www.twitch.tv/Dragory",
     ]);

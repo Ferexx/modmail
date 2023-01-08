@@ -1,7 +1,7 @@
 {
   "name": "modmailbot",
   "version": "3.6.1",
-  "description": "",
+  "description": "Modmail Bot is a bot for [Discord](https://discord.com/) that allows users to DM the bot to contact the server's moderators/staff\r without messaging them individually or pinging them publically on the server.\r These DMs get relayed to modmail *threads*, channels where staff members can reply to and talk with the user.\r To the user, the entire process happens in DMs with the bot.",
   "license": "MIT",
   "main": "src/index.js",
   "scripts": {
@@ -18,12 +18,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Dragory/modmailbot"
+    "url": "git+https://github.com/Dragory/modmailbot.git"
   },
   "dependencies": {
     "ajv": "^8.11.0",
     "discord-api-types": "^0.33.2",
-    "discord.js": "^14.6.0",
+    "discord.js": "^14.7.1",
     "dotenv": "^16.0.1",
     "eris": "^0.17.0",
     "express": "^4.17.1",
@@ -54,5 +54,13 @@
   },
   "engines": {
     "node": ">=12.0.0 <18.0.0"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/Dragory/modmailbot/issues"
+  },
+  "homepage": "https://github.com/Dragory/modmailbot#readme",
+  "directories": {
+    "doc": "docs"
+  },
+  "author": ""
 }
