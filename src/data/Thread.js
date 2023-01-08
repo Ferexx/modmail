@@ -1,5 +1,5 @@
 const moment = require("moment");
-const Eris = require("eris");
+const Discord = require('discord.js')
 
 const bot = require("../bot");
 const knex = require("../knex");
@@ -71,61 +71,34 @@ class Thread {
   }
 
   /**
-   * @param {Eris.MessageContent} text
-   * @param {Eris.MessageFile|Eris.MessageFile[]} file
-   * @returns {Promise<Eris.Message>}
+   * @param {Discord.MessageCreateOptions} messagePayload
+   * @returns {Promise<Discord.Message>}
    * @throws Error
    * @private
    */
-  async _sendDMToUser(content, file = null) {
+  async _sendDMToUser(messagePayload) {
     // Try to open a DM channel with the user
     const dmChannel = await this.getDMChannel();
-    if (! dmChannel) {
+    if (!dmChannel) {
       throw new Error("Could not open DMs with the user. They may have blocked the bot or set their privacy settings higher.");
     }
-
-    return dmChannel.createMessage(content, file);
+    return dmChannel.send(messagePayload);
   }
 
   /**
-   * @param {Eris.MessageContent} content
-   * @param {Eris.MessageFile} file
-   * @return {Promise<Eris.Message|null>}
+   * @param {Discord.MessageCreateOptions} messagePayload
+   * @return {Promise<Discord.Message|null>}
    * @private
    */
-  async _postToThreadChannel(content, file = null) {
-    try {
-      let firstMessage;
-
-      const textContent = typeof content === "string" ? content : content.content;
-      const contentObj = typeof content === "string" ? {} : content;
-      if (textContent) {
-        // Text content is included, chunk it and send it as individual messages.
-        // Files (attachments) are only sent with the last message.
-        const chunks = utils.chunkMessageLines(textContent);
-        for (const [i, chunk] of chunks.entries()) {
-          // Only send embeds, files, etc. with the last message
-          const msg = (i === chunks.length - 1)
-            ? await bot.createMessage(this.channel_id, { ...contentObj, content: chunk }, file)
-            : await bot.createMessage(this.channel_id, { ...contentObj, content: chunk, embed: null });
-
-          firstMessage = firstMessage || msg;
-        }
-      } else {
-        // No text content, send as one message
-        firstMessage = await bot.createMessage(this.channel_id, content, file);
-      }
-
-      return firstMessage;
-    } catch (e) {
-      // Channel not found
-      if (e.code === 10003) {
-        console.log(`[INFO] Failed to send message to thread channel for ${this.user_name} because the channel no longer exists. Auto-closing the thread.`);
-        this.close(true);
-      } else {
-        throw e;
-      }
+  async _postToThreadChannel(messagePayload) {
+    const threadChannel = await bot.channels.fetch(this.channel_id)
+    if (!threadChannel) {
+      console.log(`[INFO] Failed to send message to thread channel for ${this.user_name} because the channel no longer exists. Auto-closing the thread.`)
+      this.close(true)
+      return null
     }
+
+    return threadChannel.send(messagePayload)
   }
 
   /**
@@ -213,30 +186,26 @@ class Thread {
   }
 
   /**
-   * @param {Eris.Member} moderator
-   * @param {string} text
-   * @param {Eris.MessageFile[]} replyAttachments
+   * @param {Discord.Message} msg
    * @param {boolean} isAnonymous
-   * @param {Eris.MessageReference|null} messageReference
    * @returns {Promise<boolean>} Whether we were able to send the reply
    */
-  async replyToUser(moderator, text, replyAttachments = [], isAnonymous = false, messageReference = null) {
-    let moderatorName = config.useNicknames && moderator.nick ? moderator.nick : moderator.user.username;
+  async replyToUser(msg, isAnonymous = false) {
+    let moderatorName = config.useNicknames && msg.member.nick ? msg.member.nick : msg.author.username;
     if (config.breakFormattingForNames) {
       moderatorName = moderatorName.replace(escapeFormattingRegex, "\\$&");
     }
 
-    const roleName = await getModeratorThreadDisplayRoleName(moderator, this.id);
-    /** @var {Eris.MessageReference|null} userMessageReference */
-    let userMessageReference = null;
+    const roleName = await getModeratorThreadDisplayRoleName(msg.member, this.id);
+    /** @var {Discord.MessageReference|null} userMessageReference */
+    let userMessageReference = {};
 
     // Handle replies
-    if (config.relayInlineReplies && messageReference) {
-      const repliedTo = await this.getThreadMessageForMessageId(messageReference.messageID);
+    if (config.relayInlineReplies && msg.reference) {
+      const repliedTo = await this.getThreadMessageForMessageId(msg.reference.messageId);
       if (repliedTo) {
         userMessageReference = {
-          channelID: repliedTo.dm_channel_id,
-          messageID: repliedTo.dm_message_id,
+          messageReference: repliedTo.dm_message_id,
         };
       }
     }
@@ -252,7 +221,7 @@ class Thread {
       }, {});
 
       let unknownSnippets = new Set();
-      text = text.replace(
+      msg.content = msg.content.replace(
         new RegExp(`${config.inlineSnippetStart}(\\s*\\S+?\\s*)${config.inlineSnippetEnd}`, "ig"),
         (orig, trigger) => {
           trigger = trigger.trim();
@@ -271,65 +240,42 @@ class Thread {
       }
     }
 
-    // Prepare attachments, if any
-    const files = [];
-    const attachmentLinks = [];
-
-    if (replyAttachments.length > 0) {
-      for (const attachment of replyAttachments) {
-        await Promise.all([
-          attachments.attachmentToDiscordFileObject(attachment).then(file => {
-            files.push(file);
-          }),
-          attachments.saveAttachment(attachment).then(result => {
-            attachmentLinks.push(result.url);
-          })
-        ]);
-      }
-    }
-
     const rawThreadMessage = new ThreadMessage({
       message_type: THREAD_MESSAGE_TYPE.TO_USER,
-      user_id: moderator.id,
+      user_id: msg.author.id,
       user_name: moderatorName,
-      body: text,
+      body: msg.content,
       is_anonymous: (isAnonymous ? 1 : 0),
       role_name: roleName,
-      attachments: attachmentLinks,
+      attachments: msg.attachments.values(),
     });
     const threadMessage = await this._addThreadMessageToDB(rawThreadMessage.getSQLProps());
 
-    const dmContent = messageContentToAdvancedMessageContent(await formatters.formatStaffReplyDM(threadMessage));
-    if (userMessageReference) {
-      dmContent.messageReference = {
-        ...userMessageReference,
-        failIfNotExists: false,
-      };
-    }
 
-    const inboxContent = messageContentToAdvancedMessageContent(await formatters.formatStaffReplyThreadMessage(threadMessage));
-    if (messageReference) {
-      inboxContent.messageReference = {
-        channelID: messageReference.channelID,
-        messageID: messageReference.messageID,
-        failIfNotExists: false,
-      };
-    }
+    const dmContent = await formatters.formatStaffReplyDM(threadMessage);
+    const inboxContent = await formatters.formatStaffReplyThreadMessage(threadMessage);
 
     // Because moderator replies have to be editable, we enforce them to fit within 1 message
-    if (! utils.messageContentIsWithinMaxLength(dmContent) || ! utils.messageContentIsWithinMaxLength(inboxContent)) {
+    if (!utils.messageContentIsWithinMaxLength(dmContent) || !utils.messageContentIsWithinMaxLength(inboxContent)) {
       await this._deleteThreadMessage(threadMessage.id);
       await this.postSystemMessage("Reply is too long! Make sure your reply is under 2000 characters total, moderator name in the reply included.");
       return false;
     }
 
+    const messagePayload = {
+      content: dmContent,
+      files: Array.from(msg.attachments.values()),
+      reply: userMessageReference,
+      stickers: Array.from(msg.stickers.values())
+    }
+
     // Send the reply DM
     let dmMessage;
     try {
-      dmMessage = await this._sendDMToUser(dmContent, files);
+      dmMessage = await this._sendDMToUser(messagePayload);
     } catch (e) {
       await this._deleteThreadMessage(threadMessage.id);
-      await this.postSystemMessage(`Error while replying to user: ${e.message}`);
+      await this.postSystemMessage(`Error while replying to user: ${e}`);
       return false;
     }
 
@@ -342,7 +288,9 @@ class Thread {
     await this._updateThreadMessage(threadMessage.id, threadMessage.getSQLProps());
 
     // Show the reply in the inbox thread
-    const inboxMessage = await this._postToThreadChannel(inboxContent, files);
+    messagePayload.content = inboxContent
+    if (msg.reference) messagePayload.reply = { messageReference: msg.reference.messageId }
+    const inboxMessage = await this._postToThreadChannel(messagePayload);
     if (inboxMessage) {
       threadMessage.inbox_message_id = inboxMessage.id;
       await this._updateThreadMessage(threadMessage.id, { inbox_message_id: inboxMessage.id });
@@ -356,14 +304,15 @@ class Thread {
 
     // If enabled, set up a reply alert for the moderator after a slight delay
     if (config.autoAlert) {
-      this._startAutoAlertTimer(moderator.id);
+      this._startAutoAlertTimer(msg.author.id);
     }
 
     return true;
   }
 
   /**
-   * @param {Eris.Message} msg
+   * @param {Discord.Message} msg
+   * @param {boolean} skipAlert
    * @returns {Promise<void>}
    */
   async receiveUserReply(msg, skipAlert = false) {
@@ -383,35 +332,15 @@ class Thread {
     if (hookResult.cancelled) return;
 
     const fullUserName = `${msg.author.username}#${msg.author.discriminator}`;
-    let messageContent = msg.content || "";
-
-    // Prepare attachments
-    const attachmentLinks = [];
-    const smallAttachmentLinks = [];
-    const attachmentFiles = [];
-
-    for (const attachment of msg.attachments) {
-      const savedAttachment = await attachments.saveAttachment(attachment);
-
-      // Forward small attachments (<2MB) as attachments, link to larger ones
-      if (config.relaySmallAttachmentsAsAttachments && attachment.size <= config.smallAttachmentLimit) {
-        const file = await attachments.attachmentToDiscordFileObject(attachment);
-        attachmentFiles.push(file);
-        smallAttachmentLinks.push(savedAttachment.url);
-      }
-
-      attachmentLinks.push(savedAttachment.url);
-    }
 
     // Handle inline replies
-    /** @var {Eris.MessageReference|null} messageReference */
-    let messageReference = null;
-    if (config.relayInlineReplies && msg.referencedMessage) {
-      const repliedTo = await this.getThreadMessageForMessageId(msg.referencedMessage.id);
+    /** @var {Discord.MessageReference|null} messageReference */
+    let messageReference = {};
+    if (config.relayInlineReplies && msg.reference) {
+      const repliedTo = await this.getThreadMessageForMessageId(msg.reference.messageId);
       if (repliedTo) {
         messageReference = {
-          channelID: this.channel_id,
-          messageID: repliedTo.inbox_message_id,
+          messageReference: repliedTo.inbox_message_id,
         };
       }
     }
@@ -420,11 +349,11 @@ class Thread {
     if (msg.activity) {
       let applicationName = msg.application && msg.application.name;
 
-      if (! applicationName && msg.activity.party_id.startsWith("spotify:")) {
+      if (!applicationName && msg.activity.partyId.startsWith("spotify:")) {
         applicationName = "Spotify";
       }
 
-      if (! applicationName) {
+      if (!applicationName) {
         applicationName = "Unknown Application";
       }
 
@@ -439,8 +368,8 @@ class Thread {
         activityText = "do something";
       }
 
-      messageContent += `\n\n*<This message contains an invite to ${activityText} on ${applicationName}>*`;
-      messageContent = messageContent.trim();
+      msg.content += `\n\n*<This message contains an invite to ${activityText} on ${applicationName}>*`;
+      msg.content = msg.content.trim();
     }
 
     if (msg.stickers && msg.stickers.length) {
@@ -448,36 +377,37 @@ class Thread {
         return `*<Message contains sticker "${sticker.name}">*`;
       });
 
-      messageContent += "\n\n" + stickerLines.join("\n");
+      msg.content += "\n\n" + stickerLines.join("\n");
     }
 
-    messageContent = messageContent.trim();
+    msg.content = msg.content.trim();
 
     // Save DB entry
     let threadMessage = new ThreadMessage({
       message_type: THREAD_MESSAGE_TYPE.FROM_USER,
       user_id: this.user_id,
       user_name: fullUserName,
-      body: messageContent,
+      body: msg.content,
       is_anonymous: 0,
       dm_message_id: msg.id,
       dm_channel_id: msg.channel.id,
-      attachments: attachmentLinks,
-      small_attachments: smallAttachmentLinks,
+      attachments: Array.from(msg.attachments.values()),
+      small_attachments: [],
     });
 
     threadMessage = await this._addThreadMessageToDB(threadMessage.getSQLProps());
 
     // Show user reply in the inbox thread
-    const inboxContent = messageContentToAdvancedMessageContent(await formatters.formatUserReplyThreadMessage(threadMessage));
-    if (messageReference) {
-      inboxContent.messageReference = {
-        channelID: messageReference.channelID,
-        messageID: messageReference.messageID,
-        failIfNotExists: false,
-      };
+    const inboxContent = await formatters.formatUserReplyThreadMessage(threadMessage);
+
+    const messagePayload = {
+      content: inboxContent,
+      files: Array.from(msg.attachments.values()),
+      reply: messageReference,
+      stickers: Array.from(msg.stickers.values())
     }
-    const inboxMessage = await this._postToThreadChannel(inboxContent, attachmentFiles);
+
+    const inboxMessage = await this._postToThreadChannel(messagePayload);
     if (inboxMessage) {
       await this._updateThreadMessage(threadMessage.id, { inbox_message_id: inboxMessage.id });
     }
@@ -503,7 +433,7 @@ class Thread {
       });
     }
 
-    if (this.alert_ids && ! skipAlert) {
+    if (this.alert_ids && !skipAlert) {
       const ids = this.alert_ids.split(",");
       const mentionsStr = ids.map(id => `<@!${id}> `).join("");
 
@@ -517,10 +447,10 @@ class Thread {
   }
 
   /**
-   * @returns {Promise<PrivateChannel>}
+   * @returns {Discord.DMChannel}
    */
-  getDMChannel() {
-    return bot.getDMChannel(this.user_id);
+  async getDMChannel() {
+    return await bot.users.createDM(this.user_id)
   }
 
   /**
@@ -530,7 +460,7 @@ class Thread {
    * @param {boolean} [opts.allowedMentions.everyone]
    * @param {boolean|string[]} [opts.allowedMentions.roles]
    * @param {boolean|string[]} [opts.allowedMentions.users]
-   * @param {Eris.MessageReference} [opts.messageReference]
+   * @param {Discord.MessageReference} [opts.messageReference]
    * @returns {Promise<void>}
    */
   async postSystemMessage(text, opts = {}) {
@@ -543,10 +473,13 @@ class Thread {
     });
 
     const content = messageContentToAdvancedMessageContent(await formatters.formatSystemThreadMessage(threadMessage));
-    content.allowedMentions = opts.allowedMentions;
+    const messagePayload = {
+      content: content
+    }
+    messagePayload.allowedMentions = opts.allowedMentions;
     if (opts.messageReference) {
-      content.messageReference = {
-        ...opts.messageReference,
+      messagePayload.reply = {
+        messageReference: opts.messageReference,
         failIfNotExists: false,
       };
     }
@@ -613,16 +546,16 @@ class Thread {
   }
 
   /**
-   * @param {Eris.MessageContent} content
-   * @param {Eris.MessageFile} file
-   * @return {Promise<Eris.Message|null>}
+   * @param {string} content
+   * @param {Discord.FileOptions} file
+   * @return {Promise<Discord.Message|null>}
    */
   async postNonLogMessage(content, file = null) {
     return this._postToThreadChannel(content, file);
   }
 
   /**
-   * @param {Eris.Message} msg
+   * @param {Discord.Message} msg
    * @returns {Promise<void>}
    */
   async saveChatMessageToLogs(msg) {
@@ -648,8 +581,19 @@ class Thread {
     });
   }
 
+  async saveCommentMessageToLogs(msg) {
+    return this._addThreadMessageToDB({
+      message_type: THREAD_MESSAGE_TYPE.COMMENT,
+      user_id: msg.author.id,
+      user_name: `${msg.author.username}#${msg.author.discriminator}`,
+      body: msg.content,
+      is_anonymous: 0,
+      dm_message_id: msg.id
+    })
+  }
+
   /**
-   * @param {Eris.Message} msg
+   * @param {Discord.Message} msg
    * @returns {Promise<void>}
    */
   async updateChatMessageInLogs(msg) {
@@ -764,7 +708,7 @@ class Thread {
       });
 
     // Delete channel
-    const channel = bot.getChannel(this.channel_id);
+    const channel = await bot.channels.fetch(this.channel_id);
     if (channel) {
       console.log(`Deleting channel ${this.channel_id}`);
       await channel.delete("Thread closed");
@@ -775,7 +719,7 @@ class Thread {
 
   /**
    * @param {String} time
-   * @param {Eris~User} user
+   * @param {Discord~User} user
    * @param {Number} silent
    * @returns {Promise<void>}
    */
@@ -835,7 +779,7 @@ class Thread {
 
   /**
    * @param {String} time
-   * @param {Eris~User} user
+   * @param {Discord~User} user
    * @returns {Promise<void>}
    */
   async scheduleSuspend(time, user) {
@@ -889,7 +833,7 @@ class Thread {
       });
   }
 
-  /*
+  /**
    * @param {String} userId
    * @returns {Promise<void>}
    */
@@ -937,14 +881,13 @@ class Thread {
   }
 
   /**
-   * @param {Eris.Member} moderator
    * @param {ThreadMessage} threadMessage
    * @param {string} newText
    * @param {object} opts
    * @param {boolean} opts.quiet Whether to suppress edit notifications in the thread channel
    * @returns {Promise<void>}
    */
-  async editStaffReply(moderator, threadMessage, newText, opts = {}) {
+  async editStaffReply(threadMessage, newText, opts = {}) {
     const newThreadMessage = new ThreadMessage({
       ...threadMessage.getSQLProps(),
       body: newText,
@@ -955,15 +898,19 @@ class Thread {
 
     // Same restriction as in replies. Because edits could theoretically change the number of messages a reply takes, we enforce replies
     // to fit within 1 message to avoid the headache and issues caused by that.
-    if (! utils.messageContentIsWithinMaxLength(formattedDM) || ! utils.messageContentIsWithinMaxLength(formattedThreadMessage)) {
+    if (!utils.messageContentIsWithinMaxLength(formattedDM) || !utils.messageContentIsWithinMaxLength(formattedThreadMessage)) {
       await this.postSystemMessage("Edited reply is too long! Make sure the edit is under 2000 characters total, moderator name in the reply included.");
       return false;
     }
 
-    await bot.editMessage(threadMessage.dm_channel_id, threadMessage.dm_message_id, formattedDM);
-    await bot.editMessage(this.channel_id, threadMessage.inbox_message_id, formattedThreadMessage);
+    bot.channels.fetch(threadMessage.dm_channel_id)
+      .then(channel => channel.messages.fetch(threadMessage.dm_message_id))
+      .then(message => message.edit(formattedDM))
+    bot.channels.fetch(this.channel_id)
+      .then(channel => channel.messages.fetch(threadMessage.inbox_message_id))
+      .then(message => message.edit(formattedThreadMessage))
 
-    if (! opts.quiet) {
+    if (!opts.quiet) {
       const editThreadMessage = new ThreadMessage({
         message_type: THREAD_MESSAGE_TYPE.REPLY_EDITED,
         user_id: null,
@@ -985,17 +932,20 @@ class Thread {
   }
 
   /**
-   * @param {Eris.Member} moderator
    * @param {ThreadMessage} threadMessage
    * @param {object} opts
    * @param {boolean} opts.quiet Whether to suppress edit notifications in the thread channel
    * @returns {Promise<void>}
    */
-  async deleteStaffReply(moderator, threadMessage, opts = {}) {
-    await bot.deleteMessage(threadMessage.dm_channel_id, threadMessage.dm_message_id);
-    await bot.deleteMessage(this.channel_id, threadMessage.inbox_message_id);
+  async deleteStaffReply(threadMessage, opts = {}) {
+    bot.channels.fetch(threadMessage.dm_channel_id)
+      .then(channel => channel.messages.fetch(threadMessage.dm_message_id))
+      .then(message => message.delete())
+    bot.channels.fetch(this.channel_id)
+      .then(channel => channel.messages.fetch(threadMessage.inbox_message_id))
+      .then(message => message.delete())
 
-    if (! opts.quiet) {
+    if (!opts.quiet) {
       const deletionThreadMessage = new ThreadMessage({
         message_type: THREAD_MESSAGE_TYPE.REPLY_DELETED,
         user_id: null,
@@ -1074,11 +1024,12 @@ class Thread {
   async recoverDowntimeMessages() {
     if (await isBlocked(this.user_id)) return;
 
-    const dmChannel = await bot.getDMChannel(this.user_id);
-    if (! dmChannel) return;
+    const dmChannel = await bot.channels.fetch(this.user_id);
+    if (!dmChannel) return;
 
     const lastMessageId = (await this.getLatestThreadMessage()).dm_message_id;
-    let messages = (await dmChannel.getMessages(50, null, lastMessageId, null))
+    const filter = m => m.id > lastMessageId
+    let messages = (await dmChannel.awaitMessages({ max: 50, filter }))
       .reverse() // We reverse the array to send the messages in the proper order - Discord returns them newest to oldest
       .filter(msg => msg.author.id === this.user_id); // Make sure we're not recovering bot or system messages
 

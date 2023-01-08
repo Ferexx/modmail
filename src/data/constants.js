@@ -8,17 +8,18 @@ module.exports = {
   THREAD_MESSAGE_TYPE: {
     SYSTEM: 1,
     CHAT: 2,
-    FROM_USER: 3,
-    TO_USER: 4,
-    LEGACY: 5,
-    COMMAND: 6,
-    SYSTEM_TO_USER: 7,
-    REPLY_EDITED: 8,
-    REPLY_DELETED: 9,
+    COMMENT: 3,
+    FROM_USER: 4,
+    TO_USER: 5,
+    LEGACY: 6,
+    COMMAND: 7,
+    SYSTEM_TO_USER: 8,
+    REPLY_EDITED: 9,
+    REPLY_DELETED: 10,
   },
 
   // https://discord.com/developers/docs/resources/channel#channel-object-channel-types
-  DISOCRD_CHANNEL_TYPES: {
+  DISCORD_CHANNEL_TYPES: {
     GUILD_TEXT: 0,
     DM: 1,
     GUILD_VOICE: 2,

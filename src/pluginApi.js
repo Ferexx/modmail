@@ -1,6 +1,6 @@
 const express = require("express");
 const { CommandManager } = require("knub-command-manager");
-const { Client } = require("eris");
+const { Client } = require('discord.js');
 const Knex = require("knex");
 const threads = require("./data/threads");
 const displayRoles = require("./data/displayRoles");

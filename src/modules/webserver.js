@@ -1,11 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
 const mime = require("mime");
-const url = require("url");
 const fs = require("fs");
-const qs = require("querystring");
-const moment = require("moment");
-const config = require("../cfg");
 const threads = require("../data/threads");
 const attachments = require("../data/attachments");
 const { formatters } = require("../formatters");

@@ -1,5 +1,5 @@
-const { CommandManager, defaultParameterTypes, TypeConversionError, IParameter, ICommandConfig } = require("knub-command-manager");
-const Eris = require("eris");
+const { CommandManager, defaultParameterTypes, TypeConversionError, ICommandConfig } = require("knub-command-manager");
+const Discord = require('discord.js')
 const config = require("./cfg");
 const utils = require("./utils");
 const threads = require("./data/threads");
@@ -7,20 +7,20 @@ const Thread = require("./data/Thread");
 
 /**
  * @callback CommandFn
- * @param {Eris.Message} msg
+ * @param {Discord.Message} msg
  * @param {object} args
  */
 
 /**
  * @callback InboxServerCommandHandler
- * @param {Eris.Message} msg
+ * @param {Discord.Message} msg
  * @param {object} args
  * @param {Thread} [thread]
  */
 
 /**
  * @callback InboxThreadCommandHandler
- * @param {Eris.Message} msg
+ * @param {Discord.Message} msg
  * @param {object} args
  * @param {Thread} thread
  */
@@ -64,7 +64,7 @@ module.exports = {
       types: Object.assign({}, defaultParameterTypes, {
         userId(value) {
           const userId = utils.getUserMention(value);
-          if (! userId) throw new TypeConversionError();
+          if (!userId) throw new TypeConversionError();
           return userId;
         },
 
@@ -82,7 +82,7 @@ module.exports = {
     bot.on("messageCreate", async msg => {
       if (msg.author.bot) return;
       if (msg.author.id === bot.user.id) return;
-      if (! msg.content) return;
+      if (!msg.content) return;
 
       const matchedCommand = await manager.findMatchingCommand(msg.content, { msg });
       if (matchedCommand === null) return;
@@ -127,8 +127,8 @@ module.exports = {
         aliases,
         preFilters: [
           async (_, context) => {
-            if (! await utils.messageIsOnInboxServer(bot, context.msg)) return false;
-            if (! utils.isStaff(context.msg.member)) return false;
+            if (!utils.messageIsOnInboxServer(context.msg)) return false;
+            if (!utils.isStaff(context.msg.member)) return false;
             return true;
           }
         ]
@@ -154,8 +154,8 @@ module.exports = {
         aliases,
         preFilters: [
           async (_, context) => {
-            if (! await utils.messageIsOnInboxServer(bot, context.msg)) return false;
-            if (! utils.isStaff(context.msg.member)) return false;
+            if (!utils.messageIsOnInboxServer(context.msg)) return false;
+            if (!utils.isStaff(context.msg.member)) return false;
             if (commandConfig.allowSuspended) {
               thread = await threads.findByChannelId(context.msg.channel.id);
             } else {
@@ -176,7 +176,7 @@ module.exports = {
      * @type {AddAliasFn}
      */
     const addAlias = (originalCmd, alias) => {
-      if (! aliasMap.has(originalCmd)) {
+      if (!aliasMap.has(originalCmd)) {
         aliasMap.set(originalCmd, new Set());
       }
 

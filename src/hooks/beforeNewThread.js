@@ -1,4 +1,4 @@
-const Eris = require("eris");
+const Discord = require('discord.js')
 
 /**
  * @callback BeforeNewThreadHook_SetCategoryId
@@ -8,8 +8,8 @@ const Eris = require("eris");
 
 /**
  * @typedef BeforeNewThreadHookData
- * @property {Eris.User} user
- * @property {Eris.Message} [message]
+ * @property {Discord.User} user
+ * @property {Discord.Message} [message]
  * @property {CreateNewThreadForUserOpts} opts
  * @property {Function} cancel
  * @property {BeforeNewThreadHook_SetCategoryId} setCategoryId
@@ -48,8 +48,8 @@ beforeNewThread = (fn) => {
 
 /**
  * @param {{
- *   user: Eris.User,
- *   message?: Eris.Message,
+ *   user: Discord.User,
+ *   message?: Discord.Message,
  *   opts: CreateNewThreadForUserOpts,
  * }} input
  * @return {Promise<BeforeNewThreadHookResult>}

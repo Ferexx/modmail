@@ -1,5 +1,3 @@
-const Eris = require("eris");
-
 /**
  * @typedef AfterThreadCloseHookData
  * @property {string} threadId

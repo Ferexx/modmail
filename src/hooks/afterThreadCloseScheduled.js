@@ -1,5 +1,3 @@
-const Eris = require("eris");
-
 /**
  * @typedef AfterThreadCloseScheduledHookData
  * @property {Thread} thread

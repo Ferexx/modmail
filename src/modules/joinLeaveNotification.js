@@ -7,14 +7,14 @@ module.exports = ({ bot }) => {
 
   // Join Notification: Post a message in the thread if the user joins a main server
   if (config.notifyOnMainServerJoin) {
-    bot.on("guildMemberAdd", async (guild, member) => {
+    bot.on("guildMemberAdd", async (member) => {
       const mainGuilds = utils.getMainGuilds();
-      if (! mainGuilds.find((gld) => gld.id === guild.id)) return;
+      if (!mainGuilds.get(member.guild.id)) return;
 
       const thread = await threads.findOpenThreadByUserId(member.id);
       if (thread != null) {
         await thread.postSystemMessage(
-          `***The user joined the ${guild.name} server.***`
+          `***The user joined the ${member.guild.name} server.***`
         );
       }
     });
@@ -22,9 +22,9 @@ module.exports = ({ bot }) => {
 
   // Leave Notification: Post a message in the thread if the user leaves a main server
   if (config.notifyOnMainServerLeave) {
-    bot.on("guildMemberRemove", async (guild, member) => {
+    bot.on("guildMemberRemove", async (member) => {
       const mainGuilds = utils.getMainGuilds();
-      if (! mainGuilds.find((gld) => gld.id === guild.id)) return;
+      if (!mainGuilds.get(member.guild.id)) return;
 
       // Ensure that possible ban events are caught before sending message (race condition)
       setTimeout(async () => {
@@ -34,7 +34,7 @@ module.exports = ({ bot }) => {
             leaveIgnoreIDs.splice(leaveIgnoreIDs.indexOf(member.id), 1);
           } else {
             await thread.postSystemMessage(
-              `***The user left the ${guild.name} server.***`
+              `***The user left the ${member.guild.name} server.***`
             );
           }
         }
@@ -44,30 +44,30 @@ module.exports = ({ bot }) => {
 
   // Leave Notification: Post a message in the thread if the user is banned from a main server
   if (config.notifyOnMainServerLeave) {
-    bot.on("guildBanAdd", async (guild, user) => {
+    bot.on("guildBanAdd", async (ban) => {
       const mainGuilds = utils.getMainGuilds();
-      if (! mainGuilds.find((gld) => gld.id === guild.id)) return;
+      if (!mainGuilds.get(ban.guild.id)) return;
 
-      const thread = await threads.findOpenThreadByUserId(user.id);
+      const thread = await threads.findOpenThreadByUserId(ban.user.id);
       if (thread != null) {
         await thread.postSystemMessage(
-          `***The user was banned from the ${guild.name} server.***`
+          `***The user was banned from the ${ban.guild.name} server.***`
         );
-        leaveIgnoreIDs.push(user.id);
+        leaveIgnoreIDs.push(ban.user.id);
       }
     });
   }
 
   // "Join" Notification: Post a message in the thread if the user is unbanned from a main server
   if (config.notifyOnMainServerJoin) {
-    bot.on("guildBanRemove", async (guild, user) => {
+    bot.on("guildBanRemove", async (ban) => {
       const mainGuilds = utils.getMainGuilds();
-      if (! mainGuilds.find((gld) => gld.id === guild.id)) return;
+      if (!mainGuilds.get(ban.guild.id)) return;
 
-      const thread = await threads.findOpenThreadByUserId(user.id);
+      const thread = await threads.findOpenThreadByUserId(ban.user.id);
       if (thread != null) {
         await thread.postSystemMessage(
-          `***The user was unbanned from the ${guild.name} server.***`
+          `***The user was unbanned from the ${ban.guild.name} server.***`
         );
       }
     });

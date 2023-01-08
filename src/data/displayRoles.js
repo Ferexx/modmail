@@ -1,5 +1,5 @@
 const knex = require("../knex");
-const Eris = require("eris");
+const Discord = require('discord.js')
 const utils = require("../utils");
 const config = require("../cfg");
 
@@ -99,20 +99,20 @@ async function resetModeratorThreadRoleOverride(moderatorId, threadId) {
 }
 
 /**
- * @param {Eris.Member} moderator
- * @returns {Promise<Eris.Role|null>}
+ * @param {Discord.Member} moderator
+ * @returns {Promise<Discord.Role|null>}
  */
 async function getModeratorDefaultDisplayRole(moderator) {
   const globalOverrideRoleId = await getModeratorDefaultRoleOverride(moderator.id);
-  if (globalOverrideRoleId && moderator.roles.includes(globalOverrideRoleId)) {
-    return moderator.guild.roles.get(globalOverrideRoleId);
+  if (globalOverrideRoleId && moderator.roles.cache.has(globalOverrideRoleId)) {
+    return moderator.guild.roles.cache.get(globalOverrideRoleId);
   }
 
   return utils.getMainRole(moderator);
 }
 
 /**
- * @param {Eris.Member} moderator
+ * @param {Discord.Member} moderator
  * @returns {Promise<string|null>}
  */
 async function getModeratorDefaultDisplayRoleName(moderator) {
@@ -123,21 +123,21 @@ async function getModeratorDefaultDisplayRoleName(moderator) {
 }
 
 /**
- * @param {Eris.Member} moderator
+ * @param {Discord.Member} moderator
  * @param {string} threadId
- * @returns {Promise<Eris.Role|null>}
+ * @returns {Promise<Discord.Role|null>}
  */
 async function getModeratorThreadDisplayRole(moderator, threadId) {
   const threadOverrideRoleId = await getModeratorThreadRoleOverride(moderator.id, threadId);
-  if (threadOverrideRoleId && moderator.roles.includes(threadOverrideRoleId)) {
-    return moderator.guild.roles.get(threadOverrideRoleId);
+  if (threadOverrideRoleId && moderator.roles.cache.has(threadOverrideRoleId)) {
+    return moderator.guild.roles.cache.get(threadOverrideRoleId);
   }
 
   return getModeratorDefaultDisplayRole(moderator);
 }
 
 /**
- * @param {Eris.Member} moderator
+ * @param {Discord.Member} moderator
  * @param {string} threadId
  * @returns {Promise<string|null>}
  */

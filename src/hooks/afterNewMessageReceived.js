@@ -1,9 +1,9 @@
-const Eris = require("eris");
+const Discord = require('discord.js')
 
 /**
  * @typedef AfterNewMessageReceivedHookData
- * @property {Eris.User} user
- * @property {Eris.Message} [message]
+ * @property {Discord.User} user
+ * @property {Discord.Message} [message]
  * @property {CreateNewThreadForUserOpts} opts
  */
 
@@ -34,8 +34,8 @@ afterNewMessageReceived = (fn) => {
 
 /**
  * @param {{
- *   user: Eris.User,
- *   message?: Eris.Message,
+ *   user: Discord.User,
+ *   message?: Discord.Message,
  *   opts: CreateNewThreadForUserOpts,
  * }} input
  */

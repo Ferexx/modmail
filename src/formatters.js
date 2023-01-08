@@ -1,4 +1,4 @@
-const Eris = require("eris");
+const Discord = require('discord.js')
 const utils = require("./utils");
 const config = require("./cfg");
 const ThreadMessage = require("./data/ThreadMessage");
@@ -10,56 +10,56 @@ const bot = require("./bot");
  * Function to format the DM that is sent to the user when a staff member replies to them via !reply
  * @callback FormatStaffReplyDM
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to send as a DM
+ * @return {String|Promise<String>} Message content to send as a DM
  */
 
 /**
  * Function to format a staff reply in a thread channel
  * @callback FormatStaffReplyThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format a user reply in a thread channel
  * @callback FormatUserReplyThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format the inbox channel notification for a staff reply edit
  * @callback FormatStaffReplyEditNotificationThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format the inbox channel notification for a staff reply deletion
  * @callback FormatStaffReplyDeletionNotificationThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format a system message in a thread channel
  * @callback FormatSystemThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format a system message sent to the user in a thread channel
  * @callback FormatSystemToUserThreadMessage
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to post in the thread channel
+ * @return {String|Promise<String>} Message content to post in the thread channel
  */
 
 /**
  * Function to format the DM that is sent to the user when the bot sends a system message to the user
  * @callback FormatSystemToUserDM
  * @param {ThreadMessage} threadMessage
- * @return {Eris.MessageContent|Promise<Eris.MessageContent>} Message content to send as a DM
+ * @return {String|Promise<String>} Message content to send as a DM
  */
 
 /**
@@ -133,10 +133,6 @@ const defaultFormatters = {
 
   formatUserReplyThreadMessage(threadMessage) {
     let result = `**${threadMessage.user_name}:** ${threadMessage.body}`;
-
-    for (const link of threadMessage.attachments) {
-      result += `\n\n${link}`;
-    }
 
     if (config.threadTimestamps) {
       const formattedTimestamp = utils.getTimestamp(threadMessage.created_at);

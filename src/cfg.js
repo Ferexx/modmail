@@ -83,7 +83,7 @@ const envKeyPrefix = "MM_";
 let loadedEnvValues = 0;
 
 for (const [key, value] of Object.entries(process.env)) {
-  if (! key.startsWith(envKeyPrefix)) continue;
+  if (!key.startsWith(envKeyPrefix)) continue;
 
   // MM_CLOSE_MESSAGE -> closeMessage
   // MM_COMMAND_ALIASES__MV => commandAliases.mv
@@ -99,7 +99,7 @@ for (const [key, value] of Object.entries(process.env)) {
   loadedEnvValues++;
 }
 
-if (process.env.PORT && ! process.env.MM_PORT) {
+if (process.env.PORT && !process.env.MM_PORT) {
   // Special case: allow common "PORT" environment variable without prefix
   config.port = process.env.PORT;
   loadedEnvValues++;
@@ -130,35 +130,35 @@ for (const [key, value] of Object.entries(config)) {
 
 // mainGuildId => mainServerId
 // mailGuildId => inboxServerId
-if (config.mainGuildId && ! config.mainServerId) {
+if (config.mainGuildId && !config.mainServerId) {
   config.mainServerId = config.mainGuildId;
 }
-if (config.mailGuildId && ! config.inboxServerId) {
+if (config.mailGuildId && !config.inboxServerId) {
   config.inboxServerId = config.mailGuildId;
 }
 
-if (! config.dbType) {
+if (!config.dbType) {
   config.dbType = "sqlite";
 }
 
-if (! config.sqliteOptions) {
+if (!config.sqliteOptions) {
   config.sqliteOptions = {
     filename: path.resolve(__dirname, "..", "db", "data.sqlite"),
   };
 }
 
-if (! config.logOptions) {
+if (!config.logOptions) {
   config.logOptions = {};
 }
 
 config.categoryAutomation = config.categoryAutomation || {};
 // categoryAutomation.newThreadFromGuild => categoryAutomation.newThreadFromServer
-if (config.categoryAutomation && config.categoryAutomation.newThreadFromGuild && ! config.categoryAutomation.newThreadFromServer) {
+if (config.categoryAutomation && config.categoryAutomation.newThreadFromGuild && !config.categoryAutomation.newThreadFromServer) {
   config.categoryAutomation.newThreadFromServer = config.categoryAutomation.newThreadFromGuild;
 }
 
 // guildGreetings => serverGreetings
-if (config.guildGreetings && ! config.serverGreetings) {
+if (config.guildGreetings && !config.serverGreetings) {
   config.serverGreetings = config.guildGreetings;
 }
 
@@ -254,7 +254,7 @@ ajv.addKeyword({
   keyword: "multilineString",
   compile() {
     return (value, ctx) => {
-      if (! value) {
+      if (!value) {
         // Disabled -> no coercion
         return true;
       }
@@ -273,7 +273,7 @@ ajv.addKeyword({
 
 const validate = ajv.compile(schema);
 const configIsValid = validate(config);
-if (! configIsValid) {
+if (!configIsValid) {
   const errors = validate.errors.map(error => {
     if (error.params.missingProperty) {
       return `Missing required option: "${error.params.missingProperty.slice(1)}"`;

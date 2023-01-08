@@ -1,4 +1,4 @@
-const {User, Member, Message} = require("eris");
+const {User, Member, Message, ChannelType, ThreadAutoArchiveDuration} = require("discord.js");
 
 const transliterate = require("transliteration");
 const moment = require("moment");
@@ -15,7 +15,7 @@ const updates = require("./updates");
 const Thread = require("./Thread");
 const ThreadMessage = require("./ThreadMessage");
 const {callBeforeNewThreadHooks} = require("../hooks/beforeNewThread");
-const {THREAD_STATUS, DISOCRD_CHANNEL_TYPES} = require("./constants");
+const {THREAD_STATUS, DISCORD_CHANNEL_TYPES} = require("./constants");
 const {findNotesByUserId} = require("./notes");
 
 const MINUTES = 60 * 1000;
@@ -123,16 +123,8 @@ async function createNewThreadForUser(user, opts = {}) {
     const mainGuilds = utils.getMainGuilds();
     const userGuildData = new Map();
 
-    for (const guild of mainGuilds) {
-      let member = guild.members.get(user.id);
-
-      if (! member) {
-        try {
-          member = await bot.getRESTGuildMember(guild.id, user.id);
-        } catch (e) {
-          continue;
-        }
-      }
+    for (const [id, guild] of mainGuilds) {
+      let member = await guild.members.fetch(user.id);
 
       if (member) {
         userGuildData.set(guild.id, { guild, member });
@@ -148,7 +140,7 @@ async function createNewThreadForUser(user, opts = {}) {
         return member.joinedAt < moment() - config.requiredTimeOnServer * MINUTES;
       });
 
-      if (! isAllowed) {
+      if (!isAllowed) {
         if (config.timeOnServerDeniedMessage) {
           const timeOnServerDeniedMessage = utils.readMultilineConfigValue(config.timeOnServerDeniedMessage);
           const privateChannel = await user.getDMChannel();
@@ -173,7 +165,7 @@ async function createNewThreadForUser(user, opts = {}) {
     opts.channelName = channelName;
 
     let hookResult;
-    if (! ignoreHooks) {
+    if (!ignoreHooks) {
       // Call any registered beforeNewThreadHooks
       hookResult = await callBeforeNewThreadHooks({
         user,
@@ -184,11 +176,10 @@ async function createNewThreadForUser(user, opts = {}) {
     }
 
     console.log(`[NOTE] Creating new thread channel ${opts.channelName}`);
-
     // Figure out which category we should place the thread channel in
     let newThreadCategoryId = (hookResult && hookResult.categoryId) || opts.categoryId || null;
 
-    if (! newThreadCategoryId && config.categoryAutomation.newThreadFromServer) {
+    if (!newThreadCategoryId && config.categoryAutomation.newThreadFromServer) {
       // Categories for specific source guilds (in case of multiple main guilds)
       for (const [guildId, categoryId] of Object.entries(config.categoryAutomation.newThreadFromServer)) {
         if (userGuildData.has(guildId)) {
@@ -198,7 +189,7 @@ async function createNewThreadForUser(user, opts = {}) {
       }
     }
 
-    if (! newThreadCategoryId && config.categoryAutomation.newThread) {
+    if (!newThreadCategoryId && config.categoryAutomation.newThread) {
       // Blanket category id for all new threads (also functions as a fallback for the above)
       newThreadCategoryId = config.categoryAutomation.newThread;
     }
@@ -206,25 +197,29 @@ async function createNewThreadForUser(user, opts = {}) {
     // Attempt to create the inbox channel for this thread
     let createdChannel;
     try {
-      createdChannel = await utils.getInboxGuild().createChannel(opts.channelName, DISOCRD_CHANNEL_TYPES.GUILD_TEXT, {
+      createdChannel = await utils.getInboxGuild().channels.create({
+        name: opts.channelName,
+        type: ChannelType.GuildText,
         reason: "New Modmail thread",
-        parentID: newThreadCategoryId,
+        parent: newThreadCategoryId,
       });
     } catch (err) {
       // Fix for disallowed channel names in servers in Server Discovery
       if (err.message.includes("Contains words not allowed for servers in Server Discovery")) {
         const replacedChannelName = "badname-0000";
         try {
-          createdChannel = await utils.getInboxGuild().createChannel(replacedChannelName, DISOCRD_CHANNEL_TYPES.GUILD_TEXT, {
+          createdChannel = await utils.getInboxGuild().channels.create({
+            name: replacedChannelName,
+            type: ChannelType.GuildText,
             reason: "New Modmail thread",
-            parentID: newThreadCategoryId,
+            parent: newThreadCategoryId,
           });
         } catch (_err) {
           throw _err;
         }
       }
 
-      if (! createdChannel || ! createdChannel.id) {
+      if (!createdChannel || !createdChannel.id) {
         throw err;
       }
     }
@@ -241,7 +236,7 @@ async function createNewThreadForUser(user, opts = {}) {
 
     const newThread = await findById(newThreadId);
 
-    if (! quiet) {
+    if (!quiet) {
       // Ping moderators of the new thread
       const staffMention = opts.mentionRole
         ? utils.mentionRolesToMention(utils.getValidMentionRoles(opts.mentionRole))
@@ -283,8 +278,8 @@ async function createNewThreadForUser(user, opts = {}) {
         `JOINED **${joinDate}** ago`
       ];
 
-      if (guildData.member.voiceState.channelID) {
-        const voiceChannel = guildData.guild.channels.get(guildData.member.voiceState.channelID);
+      if (guildData.member.voice.channelId) {
+        const voiceChannel = guildData.guild.channels.get(guildData.member.voice.channelId);
         if (voiceChannel) {
           headerItems.push(`VOICE CHANNEL **${utils.escapeMarkdown(voiceChannel.name)}**`);
         }
@@ -330,6 +325,16 @@ async function createNewThreadForUser(user, opts = {}) {
       if (availableUpdate) {
         await newThread.postNonLogMessage(`📣 New bot version available (${availableUpdate})`);
       }
+    }
+
+    if (config.chatThread) {
+      const staffChatThread = await createdChannel.threads.create({
+        name: 'staff-chat',
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
+        reason: 'Staff chat thread'
+      })
+
+      staffChatThread.send('Keep all comments in this thread, please <@&1013506302892318780>')
     }
 
     // Return the thread

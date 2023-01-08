@@ -1,4 +1,4 @@
-const Eris = require("eris");
+const Discord = require('discord.js')
 const fs = require("fs");
 const https = require("https");
 const {promisify} = require("util");
@@ -34,7 +34,7 @@ function getErrorResult(msg = null) {
 
 /**
  * @callback AttachmentStorageTypeHandler
- * @param {Eris.Attachment} attachment
+ * @param {Discord.Attachment} attachment
  * @return {AttachmentStorageTypeResult|Promise<AttachmentStorageTypeResult>}
  */
 
@@ -45,7 +45,7 @@ function getErrorResult(msg = null) {
 
 /**
  * @callback DownloadAttachmentFn
- * @param {Eris.Attachment} attachment
+ * @param {Discord.Attachment} attachment
  * @param {number?} tries Used internally, don't pass
  * @return {Promise<DownloadAttachmentResult>}
   */
@@ -64,7 +64,7 @@ function getErrorResult(msg = null) {
 /**
  * Saves the given attachment based on the configured storage system
  * @callback SaveAttachmentFn
- * @param {Eris.Attachment} attachment
+ * @param {Discord.Attachment} attachment
  * @returns {Promise<{ url: string }>}
  */
 
@@ -203,8 +203,8 @@ async function createDiscordAttachmentMessage(channel, file, tries = 0) {
 
 /**
  * Turns the given attachment into a file object that can be sent forward as a new attachment
- * @param {Eris.Attachment} attachment
- * @returns {Promise<Eris.MessageFile>}
+ * @param {Discord.Attachment} attachment
+ * @returns {Promise<Discord.FileOptions>}
  */
 async function attachmentToDiscordFileObject(attachment) {
   const downloadResult = await downloadAttachment(attachment);
@@ -214,7 +214,7 @@ async function attachmentToDiscordFileObject(attachment) {
   // This commonly happens when pasting images as attachments, as they get named "unknown.png"
   const ext = path.extname(attachment.filename) || ".dat";
   const filename = `${attachment.id}${ext}`;
-  return { file: data, name: filename };
+  return { attachment: data, name: filename };
 }
 
 /**

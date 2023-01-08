@@ -38,13 +38,13 @@ const { formatters } = require("../formatters");
 /**
  * @callback LogStorageTypeHandlerGetFileFn
  * @param {Thread} thread
- * @return {Eris.MessageFile|Promise<Eris.MessageFile>|null|Promise<null>>}
+ * @return {Discord.FileOptions|Promise<Discord.FileOptions>|null|Promise<null>>}
  */
 
 /**
  * @typedef {object} LogStorageTypeHandlerGetCustomResult
- * @property {Eris.MessageContent?} content
- * @property {Eris.MessageFile?} file
+ * @property {string} content
+ * @property {Discord.FileOptions?} file
  */
 
 /**
@@ -112,7 +112,7 @@ const getLogUrl = async (thread) => {
 /**
  * @callback GetLogFileFn
  * @param {Thread} thread
- * @returns {Promise<Eris.MessageFile|null>}
+ * @returns {Promise<Discord.FileOptions|null>}
  */
 /**
  * @type {GetLogFileFn}

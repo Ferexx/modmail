@@ -27,6 +27,20 @@ async function findNote(id) {
 }
 
 /**
+ * 
+ * @param {number} id 
+ * @param {string} body
+ * @returns {Promise<void>} 
+ */
+async function updateNote(id, body) {
+  await knex("notes")
+    .where("id", id)
+    .update({
+      body: body
+    })
+}
+
+/**
  * @param {number} id
  * @returns {Promise<void>}
  */
@@ -56,6 +70,7 @@ async function createUserNote(userId, authorId, body) {
 module.exports = {
   findNotesByUserId,
   findNote,
+  updateNote,
   deleteNote,
   createUserNote,
 };

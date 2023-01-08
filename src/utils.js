@@ -1,4 +1,4 @@
-const Eris = require("eris");
+const Discord = require('discord.js');
 const bot = require("./bot");
 const moment = require("moment");
 const humanizeDuration = require("humanize-duration");
@@ -10,26 +10,25 @@ const userMentionRegex = /^<@!?([0-9]+?)>$/;
 
 let inboxGuild = null;
 let mainGuilds = [];
-let logChannel = null;
 
 /**
- * @returns {Eris~Guild}
+ * @returns {Discord.Guild}
  */
 function getInboxGuild() {
-  if (! inboxGuild) inboxGuild = bot.guilds.find(g => g.id === config.inboxServerId);
-  if (! inboxGuild) throw new BotError("The bot is not on the inbox server!");
+  if (!inboxGuild) inboxGuild = bot.guilds.cache.find(g => g.id === config.inboxServerId);
+  if (!inboxGuild) throw new BotError("The bot is not on the inbox server!");
   return inboxGuild;
 }
 
 /**
- * @returns {Eris~Guild[]}
+ * @returns {Discord.Guild[]}
  */
 function getMainGuilds() {
   if (mainGuilds.length === 0) {
-    mainGuilds = bot.guilds.filter(g => config.mainServerId.includes(g.id));
+    mainGuilds = bot.guilds.cache.filter(g => config.mainServerId.includes(g.id));
   }
 
-  if (mainGuilds.length !== config.mainServerId.length) {
+  if (mainGuilds.size !== config.mainServerId.length) {
     if (config.mainServerId.length === 1) {
       console.warn("[WARN] The bot hasn't joined the main guild!");
     } else {
@@ -42,29 +41,30 @@ function getMainGuilds() {
 
 /**
  * Returns the designated log channel, or the default channel if none is set
- * @returns {Eris~TextChannel}
+ * @returns {Discord.TextChannel}
  */
-function getLogChannel() {
+async function getLogChannel() {
   const _inboxGuild = getInboxGuild();
-  const _logChannel = _inboxGuild.channels.get(config.logChannelId);
+  const _logChannel = await _inboxGuild.channels.fetch(config.logChannelId);
 
-  if (! _logChannel) {
+  if (!_logChannel) {
     throw new BotError("Log channel (logChannelId) not found!");
   }
 
-  if (! (_logChannel instanceof Eris.TextChannel)) {
+  if (!(_logChannel instanceof Discord.TextChannel)) {
     throw new BotError("Make sure the logChannelId option is set to a text channel!");
   }
 
   return _logChannel;
 }
 
-function postLog(...args) {
-  return getLogChannel().createMessage(...args);
+async function postLog(...args) {
+  const channel = await getLogChannel()
+  return channel.send(...args);
 }
 
 function postError(channel, str, opts = {}) {
-  return channel.createMessage({
+  return channel.send({
     ...opts,
     content: `⚠ ${str}`
   });
@@ -72,65 +72,44 @@ function postError(channel, str, opts = {}) {
 
 /**
  * Returns whether the given member has permission to use modmail commands
- * @param {Eris.Member} member
+ * @param {Discord.GuildMember} member
  * @returns {boolean}
  */
 function isStaff(member) {
-  if (! member) return false;
+  if (!member) return false;
   if (config.inboxServerPermission.length === 0) return true;
-  if (member.guild.ownerID === member.id) return true;
+  if (member.guild.ownerId === member.id) return true;
 
-  return config.inboxServerPermission.some(perm => {
-    if (isSnowflake(perm)) {
-      // If perm is a snowflake, check it against the member's user id and roles
-      if (member.id === perm) return true;
-      if (member.roles.includes(perm)) return true;
-    } else {
-      // Otherwise assume perm is the name of a permission
-      return member.permission.has(perm);
-    }
-
-    return false;
-  });
+  return member.permissions.has(Discord.PermissionsBitField.Flags.ManageMessages)
 }
 
 /**
  * Returns whether the given message is on the inbox server
- * @param {Eris.Client} client
- * @param {Eris.Message} msg
- * @returns {Promise<boolean>}
+ * @param {Discord.Message} msg
+ * @returns {boolean}
  */
-async function messageIsOnInboxServer(client, msg) {
-  const channel = await getOrFetchChannel(client, msg.channel.id);
-  if (! channel.guild) return false;
-  if (channel.guild.id !== getInboxGuild().id) return false;
-  return true;
+async function messageIsOnInboxServer(msg) {
+  return getInboxGuild().id === msg.guildId
 }
 
 /**
  * Returns whether the given message is on the main server
- * @param {Eris.Client} client
- * @param {Eris.Message} msg
- * @returns {Promise<boolean>}
+ * @param {Discord.Message} msg
+ * @returns {boolean}
  */
-async function messageIsOnMainServer(client, msg) {
-  const channel = await getOrFetchChannel(client, msg.channel.id);
-  if (! channel || ! channel.guild) return false;
-
-  return getMainGuilds()
-    .some(g => channel.guild.id === g.id);
+async function messageIsOnMainServer(msg) {
+  return getMainGuilds().some(g => msg.guildId === g.id)
 }
 
 /**
- * @param {Eris.Attachment} attachment
- * @param {string} attachmentUrl
+ * @param {Discord.Attachment} attachment
  * @returns {Promise<string>}
  */
-async function formatAttachment(attachment, attachmentUrl) {
+async function formatAttachment(attachment) {
   let filesize = attachment.size || 0;
   filesize /= 1024;
 
-  return `**Attachment:** ${attachment.filename} (${filesize.toFixed(1)}KB)\n${attachmentUrl}`;
+  return `**Attachment:** ${attachment.name} (${filesize.toFixed(1)}KB)\n${attachment.url}`;
 }
 
 /**
@@ -139,7 +118,7 @@ async function formatAttachment(attachment, attachmentUrl) {
  * @returns {String|null}
  */
 function getUserMention(str) {
-  if (! str) return null;
+  if (!str) return null;
 
   str = str.trim();
 
@@ -189,13 +168,11 @@ async function getSelfUrl(path = "") {
 
 /**
  * Returns the highest hoisted role of the given member
- * @param {Eris~Member} member
- * @returns {Eris~Role}
+ * @param {Discord.GuildMember} member
+ * @returns {Discord.Role}
  */
 function getMainRole(member) {
-  const roles = member.roles.map(id => member.guild.roles.get(id));
-  roles.sort((a, b) => a.position > b.position ? -1 : 1);
-  return roles.find(r => r.hoist);
+  return member.roles.hoist
 }
 
 /**
@@ -261,7 +238,7 @@ function convertDelayStringToMS(str) {
  * @returns {string[]}
  */
 function getValidMentionRoles(mentionRoles) {
-  if (! Array.isArray(mentionRoles)) {
+  if (!Array.isArray(mentionRoles)) {
     mentionRoles = [mentionRoles];
   }
 
@@ -322,7 +299,7 @@ function postSystemMessageWithFallback(channel, thread, text) {
   if (thread) {
     thread.postSystemMessage(text);
   } else {
-    channel.createMessage(text);
+    channel.send(text);
   }
 }
 
@@ -387,7 +364,7 @@ const MAX_EMBED_CONTENT_LENGTH = 6000;
  * Based on testing, Discord appears to enforce length limits (at least in the client)
  * the same way JavaScript does, using the UTF-16 byte count as the number of characters.
  *
- * @param {string|Eris.MessageContent} content
+ * @param {string|Discord.APIMessage} content
  */
 function messageContentIsWithinMaxLength(content) {
   if (typeof content === "string") {
@@ -398,20 +375,20 @@ function messageContentIsWithinMaxLength(content) {
     return false;
   }
 
-  if (content.embed) {
+  if (content.embeds) {
     let embedContentLength = 0;
 
-    if (content.embed.title) embedContentLength += content.embed.title.length;
-    if (content.embed.description) embedContentLength += content.embed.description.length;
-    if (content.embed.footer && content.embed.footer.text) {
-      embedContentLength += content.embed.footer.text.length;
+    if (content.embeds[0].title) embedContentLength += content.embeds[0].title.length;
+    if (content.embeds[0].description) embedContentLength += content.embeds[0].description.length;
+    if (content.embeds[0].footer && content.embeds[0].footer.text) {
+      embedContentLength += content.embeds[0].footer.text.length;
     }
-    if (content.embed.author && content.embed.author.name) {
-      embedContentLength += content.embed.author.name.length;
+    if (content.embeds[0].author && content.embeds[0].author.name) {
+      embedContentLength += content.embeds[0].author.name.length;
     }
 
-    if (content.embed.fields) {
-      for (const field of content.embed.fields) {
+    if (content.embeds[0].fields) {
+      for (const field of content.embeds[0].fields) {
         if (field.title) embedContentLength += field.name.length;
         if (field.description) embedContentLength += field.value.length;
       }
@@ -423,6 +400,10 @@ function messageContentIsWithinMaxLength(content) {
   }
 
   return true;
+}
+
+function messageContentToAdvancedMessageContent(content) {
+  return typeof content === "string" ? { content: content } : content;
 }
 
 /**
@@ -496,58 +477,6 @@ function chunkMessageLines(str, maxChunkLength = 1990) {
   });
 }
 
-/**
- * @type {Record<string, Promise<Eris.AnyChannel | null>>}
- */
-const fetchChannelPromises = {};
-
-/**
- * @param {Eris.Client} client
- * @param {string} channelId
- * @returns {Promise<Eris.AnyChannel | null>}
- */
-async function getOrFetchChannel(client, channelId) {
-  const cachedChannel = client.getChannel(channelId);
-  if (cachedChannel) {
-    return cachedChannel;
-  }
-
-  if (! fetchChannelPromises[channelId]) {
-    fetchChannelPromises[channelId] = (async () => {
-      const channel = client.getRESTChannel(channelId);
-      if (! channel) {
-        return null;
-      }
-
-      // Cache the result
-      if (channel instanceof Eris.ThreadChannel) {
-        channel.guild.threads.add(channel);
-        client.threadGuildMap[channel.id] = channel.guild.id;
-      } else if (channel instanceof Eris.GuildChannel) {
-        channel.guild.channels.add(channel);
-        client.channelGuildMap[channel.id] = channel.guild.id;
-      } else if (channel instanceof Eris.PrivateChannel) {
-        client.privateChannels.add(channel);
-      } else if (channel instanceof Eris.GroupChannel) {
-        client.groupChannels.add(channel);
-      }
-
-      return channel;
-    })();
-  }
-
-  return fetchChannelPromises[channelId];
-}
-
-/**
- * Converts a MessageContent, i.e. string | AdvancedMessageContent, to an AdvancedMessageContent object
- * @param {Eris.MessageContent} content
- * @returns {Eris.AdvancedMessageContent}
- */
-function messageContentToAdvancedMessageContent(content) {
-  return typeof content === "string" ? { content } : content;
-}
-
 const START_CODEBLOCK = "```";
 const END_CODEBLOCK = "```";
 
@@ -599,9 +528,6 @@ module.exports = {
   chunkMessageLines,
 
   messageContentToAdvancedMessageContent,
-
-  getOrFetchChannel,
-
   noop,
 
   START_CODEBLOCK,

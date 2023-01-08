@@ -1,32 +1,25 @@
-const Eris = require("eris");
+const Discord = require('discord.js');
+const { GatewayIntentBits, Partials } = require('discord.js')
 const config = require("./cfg");
 
 const intents = [
-  // PRIVILEGED INTENTS
-  "guildMembers", // For server greetings
-
-  // REGULAR INTENTS
-  "directMessages", // For core functionality
-  "guildMessages", // For bot commands and mentions
-  "guilds", // For core functionality
-  "guildVoiceStates", // For member information in the thread header
-  "guildMessageTyping", // For typing indicators
-  "directMessageTyping", // For typing indicators
-  "guildBans", // For join/leave notification Ban message
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildPresences,
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.DirectMessages,
+  GatewayIntentBits.MessageContent,
 
   // EXTRA INTENTS (from the config)
   ...config.extraIntents,
-];
+]
+const partials = [
+  Partials.Channel
+]
 
-const bot = new Eris.Client(config.token, {
-  restMode: true,
-  intents: Array.from(new Set(intents)),
-  allowedMentions: {
-    everyone: false,
-    roles: false,
-    users: false,
-  },
-});
+const bot = new Discord.Client({
+  intents: intents, partials: partials
+})
 
 // Eris allegedly handles these internally, so we can ignore them
 const SAFE_TO_IGNORE_ERROR_CODES = [
@@ -44,6 +37,6 @@ bot.on("error", err => {
 });
 
 /**
- * @type {Eris.Client}
+ * @type {Discord.Client}
  */
 module.exports = bot;
