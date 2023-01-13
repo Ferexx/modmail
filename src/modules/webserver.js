@@ -16,9 +16,9 @@ function notfound(res) {
  */
 async function serveLogs(req, res) {
   const thread = await threads.findById(req.params.threadId);
-  if (! thread) return notfound(res);
+  if (!thread) return notfound(res);
 
-  let threadMessages = await thread.getThreadMessages();
+  let threadMessages = (await thread.getThreadMessages()).filter(threadMessage => !threadMessage.isChat());
 
   const formatLogResult = await formatters.formatLog(thread, threadMessages, {
     simple: Boolean(req.query.simple),
@@ -29,6 +29,23 @@ async function serveLogs(req, res) {
 
   res.set("Content-Type", contentType);
   res.send(formatLogResult.content);
+}
+
+async function serveChat(req, res) {
+  const thread = await threads.findById(req.params.threadId)
+  if (!thread) return notfound(res)
+
+  let threadMessages = (await thread.getThreadMessages()).filter(threadMessage => threadMessage.isChat())
+
+  const formatLogResult = await formatters.formatChatLog(thread, threadMessages, {
+    simple: Boolean(req.query.simple),
+    verbose: Boolean(req.query.verbose)
+  })
+
+  const contentType = formatLogResult.extra && formatLogResult.extra.contentType || 'text/plain; charset=UTF-8'
+
+  res.set('Content-Type', contentType)
+  res.send(formatLogResult.content)
 }
 
 function serveAttachments(req, res) {
@@ -54,6 +71,7 @@ const server = express();
 server.use(helmet());
 
 server.get("/logs/:threadId", serveLogs);
+server.get('/chats/:threadId/', serveChat)
 server.get("/attachments/:attachmentId/:filename", serveAttachments);
 
 server.on("error", err => {

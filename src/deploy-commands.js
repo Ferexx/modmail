@@ -13,7 +13,7 @@ for (const file of commandFiles) {
 	commands.push(command.data.toJSON());
 }
 
-const rest = new REST({ version: '10' }).setToken('MTA0MTM2NDQ0NjI0MjY2ODY5NQ.GwXLmw.XkNgKwp5WTO1nt1bmJ3KXpiXbtM5r-VEeqKDOk');
+const rest = new REST({ version: '10' }).setToken('MTA0MTM2NDQ0NjI0MjY2ODY5NQ.GF3QYN.FhBhZ-O4UTWoq5ZTnou_lRak-t4_fHPPX53vLA');
 
 (async () => {
 	try {

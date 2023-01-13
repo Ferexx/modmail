@@ -154,6 +154,17 @@ function initBaseMessageHandlers() {
       thread.saveChatMessageToLogs(msg);
     }
   });
+  /**
+   * When a moderator posts in a staff chat thread
+   */
+  bot.on('messageCreate', async msg => {
+    if (!utils.messageIsOnInboxServer(msg)) return
+    if (msg.author.id === bot.user.id) return
+    if (!msg.channel.isThread()) return
+
+    const thread = await threads.findByChannelId(msg.channel.parentId)
+    thread.saveChatMessageToLogs(msg)
+  })
 
   /**
    * When we get a private message...
@@ -383,9 +394,12 @@ function initCommandHandler() {
     if (utils.getInboxGuild().id !== interaction.guildId) return
 
     if (interaction.commandName === 'pose') {
-      interaction.respond(Object.keys(poses).filter(pose => pose !== 'time').map(choice => ({ name: choice, value: poses[choice]})))
+      interaction.respond(Object.keys(poses).filter(pose => pose !== 'time').filter(pose => pose.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: poses[choice]})))
     } else if (interaction.commandName === 'move') {
       interaction.respond(utils.getInboxGuild().channels.cache.filter(category => category.type === ChannelType.GuildCategory && interaction.channel.parentId !== category.id).map(channel => ({ name: channel.name, value: channel.name })))
+    }
+    if (interaction.commandName === 'config') {
+      interaction.respond(Object.keys(config).filter(key => key.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: choice})).slice(0, 25))
     }
   })
 

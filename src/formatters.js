@@ -75,12 +75,27 @@ const bot = require("./bot");
  */
 
 /**
+ * @typedef {Object} FormatChatLogResult
+ * @property {String} content Contents of the entire log
+ * @property {*?} extra
+ */
+
+/**
  * Function to format the inbox channel notification for a staff reply deletion
  * @callback FormatLog
  * @param {Thread} thread
  * @param {ThreadMessage[]} threadMessages
  * @param {FormatLogOptions={}} opts
  * @return {FormatLogResult|Promise<FormatLogResult>}
+ */
+
+/**
+ * Function to format the logs for staff chat thread
+ * @callback FormatChatLog
+ * @param {Thread} thread
+ * @param {ThreadMessage[]} threadMessages
+ * @param {FormatLogOptions={}} opts
+ * @return {FormatChatLogResult|Promise<FormatChatLogResult>}
  */
 
 /**
@@ -94,6 +109,7 @@ const bot = require("./bot");
  * @property {FormatSystemToUserThreadMessage} formatSystemToUserThreadMessage
  * @property {FormatSystemToUserDM} formatSystemToUserDM
  * @property {FormatLog} formatLog
+ * @property {FormatChatLog} formatChatLog
  */
 
 /**
@@ -291,7 +307,7 @@ const defaultFormatters = {
     });
 
     const openedAt = moment(thread.created_at).format("YYYY-MM-DD HH:mm:ss");
-    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.`;
+    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.\nView staff chats for this thread by replacing "logs" in the url with "chats"`;
 
     const fullResult = header + "\n\n" + lines.join("\n");
 
@@ -299,6 +315,21 @@ const defaultFormatters = {
       content: fullResult,
     };
   },
+
+  formatChatLog(thread, threadMessages, opts = {}) {
+    const lines = threadMessages.map(message => {
+      return `[${moment.utc(message.created_at).format("YYYY-MM-DD HH:mm:ss")}] [${message.user_name}] ${message.body}`
+    })
+
+    const openedAt = moment(thread.created_at).format("YYYY-MM-DD HH:mm:ss")
+    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.`
+
+    const fullResult = header + "\n\n" + lines.join("\n")
+
+    return {
+      content: fullResult,
+    }
+  }
 };
 
 /**
