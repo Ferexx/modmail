@@ -1024,7 +1024,7 @@ class Thread {
   async recoverDowntimeMessages() {
     if (await isBlocked(this.user_id)) return;
 
-    const dmChannel = await bot.channels.fetch(this.user_id);
+    const dmChannel = await this.getDMChannel();
     if (!dmChannel) return;
 
     const lastMessageId = (await this.getLatestThreadMessage()).dm_message_id;

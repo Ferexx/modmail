@@ -42,6 +42,7 @@ module.exports = {
 
     bot.once("ready", async () => {
       console.log(`Connected as ${bot.user.tag}! Waiting for servers to become available...`);
+      console.log('\ni <3 sullie')
 
       await (new Promise(resolve => {
         const waitNoteTimeout = setTimeout(() => {
@@ -136,6 +137,7 @@ function initBaseMessageHandlers() {
   bot.on("messageCreate", async msg => {
     if (!utils.messageIsOnInboxServer(msg)) return;
     if (msg.author.id === bot.user.id) return;
+    if (msg.content.startsWith('/')) return
 
     const thread = await threads.findByChannelId(msg.channel.id);
     if (!thread) return;
@@ -154,6 +156,7 @@ function initBaseMessageHandlers() {
       thread.saveChatMessageToLogs(msg);
     }
   });
+
   /**
    * When a moderator posts in a staff chat thread
    */
@@ -163,7 +166,9 @@ function initBaseMessageHandlers() {
     if (!msg.channel.isThread()) return
 
     const thread = await threads.findByChannelId(msg.channel.parentId)
-    thread.saveChatMessageToLogs(msg)
+    if (thread) {
+      thread.saveChatMessageToLogs(msg)
+    }
   })
 
   /**
@@ -314,16 +319,19 @@ function initBaseMessageHandlers() {
    */
   bot.on("messageCreate", async msg => {
     const channel = msg.channel
-    if (! await utils.messageIsOnMainServer(bot, msg)) return;
-    if (! msg.mentions.some(user => user.id === bot.user.id)) return;
+    if (!utils.messageIsOnMainServer(bot, msg)) return;
+    const mentioned = msg.mentions.members
+    if (mentioned) {
+      if (!msg.mentions.members.some(user => user.id === bot.user.id)) return;
+    } else return
     if (msg.author.bot) return;
 
-    if (await utils.messageIsOnInboxServer(bot, msg)) {
+    if (utils.messageIsOnInboxServer(bot, msg)) {
       // For same server setups, check if the person who pinged modmail is staff. If so, ignore the ping.
       if (utils.isStaff(msg.member)) return;
     } else {
       // For separate server setups, check if the member is staff on the modmail server
-      const inboxMember = utils.getInboxGuild().members.get(msg.author.id);
+      const inboxMember = await utils.getInboxGuild().members.fetch(msg.author.id);
       if (inboxMember && utils.isStaff(inboxMember)) return;
     }
 
@@ -374,6 +382,7 @@ function initBaseMessageHandlers() {
 }
 
 function initCommandHandler() {
+  // Slash commands
   bot.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return
     if (utils.getInboxGuild().id !== interaction.guildId) return
@@ -389,6 +398,7 @@ function initCommandHandler() {
     }
   })
 
+  // Autocomplete
   bot.on('interactionCreate', async interaction => {
     if (!interaction.isAutocomplete()) return
     if (utils.getInboxGuild().id !== interaction.guildId) return
@@ -396,16 +406,16 @@ function initCommandHandler() {
     if (interaction.commandName === 'pose') {
       interaction.respond(Object.keys(poses).filter(pose => pose !== 'time').filter(pose => pose.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: poses[choice]})))
     } else if (interaction.commandName === 'move') {
-      interaction.respond(utils.getInboxGuild().channels.cache.filter(category => category.type === ChannelType.GuildCategory && interaction.channel.parentId !== category.id).map(channel => ({ name: channel.name, value: channel.name })))
-    }
-    if (interaction.commandName === 'config') {
+      interaction.respond(utils.getInboxGuild().channels.cache.filter(category => category.type === ChannelType.GuildCategory && interaction.channel.parentId !== category.id).filter(cat => cat.name.includes(interaction.options.getFocused()) && cat.name !== 'Owners' && cat.name !== 'Main').map(channel => ({ name: channel.name, value: channel.name })))
+    } else if (interaction.commandName === 'config') {
       interaction.respond(Object.keys(config).filter(key => key.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: choice})).slice(0, 25))
     }
   })
 
+  // Buttons
   bot.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return
-    if (utils.getMainGuilds()[0].id !== interaction.guildId) return
+    if (utils.getMainGuilds().at(0).id !== interaction.guildId) return
     if (!interaction.customId.startsWith('b_')) return
 
     let thread = await threads.findOpenThreadByUserId(interaction.member.id)
@@ -413,7 +423,7 @@ function initCommandHandler() {
     switch (interaction.customId) {
       case 'b_staff_complaint':
         msg = `Hey ${interaction.user.username}, please type your staff complaint here.`
-        category = utils.getInboxGuild().channels.cache.find(category => category.name.toLowerCase() === 'staff complaints' && category.type === ChannelType.GuildCategory).id
+        category = utils.getInboxGuild().channels.cache.find(category => category.name.toLowerCase() === 'complaints' && category.type === ChannelType.GuildCategory).id
         break
       case 'b_tech_issue':
         msg = `Hey ${interaction.user.username}, please type your tech issue here.`

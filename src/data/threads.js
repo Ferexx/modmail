@@ -320,13 +320,6 @@ async function createNewThreadForUser(user, opts = {}) {
       await threadHeaderMessage.pin();
     }
 
-    if (config.updateNotifications) {
-      const availableUpdate = await updates.getAvailableUpdate();
-      if (availableUpdate) {
-        await newThread.postNonLogMessage(`📣 New bot version available (${availableUpdate})`);
-      }
-    }
-
     if (config.chatThread) {
       const staffChatThread = await createdChannel.threads.create({
         name: 'staff-chat',
@@ -334,7 +327,7 @@ async function createNewThreadForUser(user, opts = {}) {
         reason: 'Staff chat thread'
       })
 
-      staffChatThread.send('Keep all comments in this thread, please <@&1013506302892318780>')
+      staffChatThread.send('Keep all comments in this thread, please.')
     }
 
     // Return the thread

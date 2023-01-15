@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js')
-const { channels } = require('../bot')
 const threads = require('../data/threads')
 const utils = require('../utils')
+const cfg = require('../cfg')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,17 +39,20 @@ module.exports = {
         const verificationChannel = utils.getMainGuilds().at(0).channels.cache.find(channel => channel.name === 'verified')
 
         verificationChannel.send({ embeds: [{"description": "**Member:**\n<@" + thread.user_id + ">\n**DOB**:\n" + interaction.options.getInteger('day') + "/" + interaction.options.getInteger('month') + "/" + interaction.options.getInteger('year') + "\n**Verified By:**\n<@" + interaction.member.id + ">" }]})
-        member = await utils.getMainGuilds()[0].members.fetch(thread.user_id)
+        const member = await utils.getMainGuilds().at(0).members.fetch(thread.user_id)
         member.roles.add("1013496081272803415")
         member.roles.remove("1013496081272803412")
         if (interaction.options.getString('gender') === 'f') {
             member.roles.remove("1013496081369288879")
             member.roles.add("1013496081369288880")
+            thread.sendSystemMessageToUser(cfg['verifiedFemale'])
+        } else if (interaction.options.getString('gender') === 'm') {
+            thread.sendSystemMessageToUser(cfg['verifiedMale'])
         }
         if (age > 21) {
             member.roles.add("1013496081272803414")
         }
-        mainGuild.channels.fetch("1013496082338156588")
+        utils.getMainGuilds().at(0).channels.fetch("1013496082338156588")
             .then(channel => channel.send({ content: "Welcome <@" + thread.user_id + "> to Terra!! Please read our <#1013496082086494321> and grab some <#1013496082086494322>. Feel free to join our voice chats to get to know us!"}))
         interaction.reply('User verified')
     }

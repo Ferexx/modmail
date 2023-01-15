@@ -5,11 +5,11 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('newthread')
         .setDescription('create a new thread')
-        .addStringOption(option => 
+        .addStringOption(option =>
             option.setName('user_id')
                 .setDescription('the id of the user to create the thread with')
                 .setRequired(true)),
-    
+
     async execute(interaction) {
         const userId = interaction.options.getString('user_id')
         const user = await interaction.client.users.fetch(userId)
@@ -26,9 +26,10 @@ module.exports = {
         thread = await threads.createNewThreadForUser(user, {
             ignoreRequirements: true,
             ignoreHooks: true,
+            quiet: true,
             source: 'command'
         })
-        
+
         if (thread) {
             thread.postSystemMessage('Thread was opened by <@' + interaction.user.id + '>')
             interaction.reply('Thread created: <#' + thread.channel_id + '>')
