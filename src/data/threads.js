@@ -302,7 +302,7 @@ async function createNewThreadForUser(user, opts = {}) {
     // Modmail history / previous logs
     const userLogCount = await getClosedThreadCountByUserId(user.id);
     if (userLogCount > 0) {
-      infoHeader += `\n\nThis user has **${userLogCount}** previous modmail threads. Use \`${config.prefix}logs\` to see them.`;
+      infoHeader += `\n\nThis user has **${userLogCount}** previous modmail threads. Use \`/logs\` to see them.`;
     }
 
     const userNotes = await findNotesByUserId(user.id);
