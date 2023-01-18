@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js')
 const threads = require('../data/threads')
+const utils = require('../utils')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,18 +13,18 @@ module.exports = {
 
     async execute(interaction) {
         const userId = interaction.options.getString('user_id')
-        const user = await interaction.client.users.fetch(userId)
-        if (!user) {
+        const member = await utils.getMainGuilds().at(0).members.fetch(userId)
+        if (!member) {
             interaction.reply('Could not find this user, try again with a real person')
             return
         }
         let thread = await threads.findOpenThreadByUserId(userId)
         if (thread) {
-            interaction.reply('There\'s already an open thread with this user <#' + thread.channel_id + '>')
+            interaction.reply('There\'s already an open thread with this user: <#' + thread.channel_id + '>')
             return
         }
 
-        thread = await threads.createNewThreadForUser(user, {
+        thread = await threads.createNewThreadForUser(member.user, {
             ignoreRequirements: true,
             ignoreHooks: true,
             quiet: true,
@@ -35,6 +36,6 @@ module.exports = {
             interaction.reply('Thread created: <#' + thread.channel_id + '>')
             return
         }
-        interaction.reply('Could find this user, try again with a real person')
+        interaction.reply('Could not find this user, try again with a real person')
     }
 }

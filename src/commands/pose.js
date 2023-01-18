@@ -11,7 +11,7 @@ module.exports = {
                 .setDescription('Specific pose to send')
                 .setRequired(false)
                 .setAutocomplete(true)),
-    
+
     async execute(interaction) {
         const thread = await threads.findOpenThreadByChannelId(interaction.channelId)
         const pose = interaction.options.getString('pose')
@@ -19,7 +19,7 @@ module.exports = {
 
         let poseToSend
         if (pose) {
-            poseToSend = poses[pose]
+            poseToSend = poses[pose.toLowerCase()]
             if (!poseToSend) {
                 interaction.reply('Couldn\'t find that pose')
                 return

@@ -108,7 +108,7 @@ async function createNewThreadForUser(user, opts = {}) {
 
     // If set in config, check that the user's account is old enough (time since they registered on Discord)
     // If the account is too new, don't start a new thread and optionally reply to them with a message
-    if (config.requiredAccountAge && ! ignoreRequirements) {
+    if (config.requiredAccountAge && !ignoreRequirements) {
       if (user.createdAt > moment() - config.requiredAccountAge * HOURS){
         if (config.accountAgeDeniedMessage) {
           const accountAgeDeniedMessage = utils.readMultilineConfigValue(config.accountAgeDeniedMessage);
@@ -279,14 +279,14 @@ async function createNewThreadForUser(user, opts = {}) {
       ];
 
       if (guildData.member.voice.channelId) {
-        const voiceChannel = guildData.guild.channels.get(guildData.member.voice.channelId);
+        const voiceChannel = await guildData.guild.channels.fetch(guildData.member.voice.channelId);
         if (voiceChannel) {
           headerItems.push(`VOICE CHANNEL **${utils.escapeMarkdown(voiceChannel.name)}**`);
         }
       }
 
-      if (config.rolesInThreadHeader && guildData.member.roles.length) {
-        const roles = guildData.member.roles.map(roleId => guildData.guild.roles.get(roleId)).filter(Boolean);
+      if (config.rolesInThreadHeader && guildData.member.roles.cache.size) {
+        const roles = guildData.member.roles.cache.filter(role => !role.name.includes('everyone'))
         headerItems.push(`ROLES **${roles.map(r => r.name).join(", ")}**`);
       }
 

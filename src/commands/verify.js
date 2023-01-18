@@ -26,13 +26,14 @@ module.exports = {
 
     async execute(interaction) {
         const thread = await threads.findOpenThreadByChannelId(interaction.channelId)
+        const gender = interaction.options.getString('gender').toLowerCase()
         if (!thread) {
-            interaction.reply('Command must be executed in a thread')
+            await interaction.reply('Command must be executed in a thread')
             return
         }
         let age = _calculateage(Date.parse(interaction.options.getInteger('year') + "-" + interaction.options.getInteger('month') + "-" + interaction.options.getInteger('day')))
         if (age < 18) {
-            interaction.reply('User is underage, please kick them.')
+            await interaction.reply('User is underage, please kick them.')
             return
         }
 
@@ -42,11 +43,11 @@ module.exports = {
         const member = await utils.getMainGuilds().at(0).members.fetch(thread.user_id)
         member.roles.add("1013496081272803415")
         member.roles.remove("1013496081272803412")
-        if (interaction.options.getString('gender') === 'f') {
+        if (gender === 'f' || gender === 'female') {
             member.roles.remove("1013496081369288879")
             member.roles.add("1013496081369288880")
             thread.sendSystemMessageToUser(cfg['verifiedFemale'])
-        } else if (interaction.options.getString('gender') === 'm') {
+        } else if (gender === 'm' || gender === 'male') {
             thread.sendSystemMessageToUser(cfg['verifiedMale'])
         }
         if (age > 21) {
@@ -54,7 +55,7 @@ module.exports = {
         }
         utils.getMainGuilds().at(0).channels.fetch("1013496082338156588")
             .then(channel => channel.send({ content: "Welcome <@" + thread.user_id + "> to Terra!! Please read our <#1013496082086494321> and grab some <#1013496082086494322>. Feel free to join our voice chats to get to know us!"}))
-        interaction.reply('User verified')
+        await interaction.reply('User verified')
     }
 }
 

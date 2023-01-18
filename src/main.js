@@ -352,9 +352,9 @@ function initBaseMessageHandlers() {
     }
 
     content = utils.chunkMessageLines(content);
-    const logChannelId = utils.getLogChannel().id;
+    const logChannel = utils.getLogChannel();
     for (let i = 0; i < content.length; i++) {
-      await bot.createMessage(logChannelId, {
+      await logChannel.send({
         content: content[i],
         allowedMentions,
       });
@@ -404,7 +404,7 @@ function initCommandHandler() {
     if (utils.getInboxGuild().id !== interaction.guildId) return
 
     if (interaction.commandName === 'pose') {
-      interaction.respond(Object.keys(poses).filter(pose => pose !== 'time').filter(pose => pose.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: poses[choice]})))
+      interaction.respond(Object.keys(poses).filter(pose => pose !== 'time').filter(pose => pose.includes(interaction.options.getFocused())).map(choice => ({ name: choice, value: choice })))
     } else if (interaction.commandName === 'move') {
       interaction.respond(utils.getInboxGuild().channels.cache.filter(category => category.type === ChannelType.GuildCategory && interaction.channel.parentId !== category.id).filter(cat => cat.name.includes(interaction.options.getFocused()) && cat.name !== 'Owners' && cat.name !== 'Main').map(channel => ({ name: channel.name, value: channel.name })))
     } else if (interaction.commandName === 'config') {
