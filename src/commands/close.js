@@ -64,13 +64,13 @@ async function getMessagesAmounts(thread) {
     messages.forEach(message => {
         switch(message.message_type) {
             case THREAD_MESSAGE_TYPE.CHAT:
-                chatMessages.push()
+                chatMessages.push(message)
                 break
             case THREAD_MESSAGE_TYPE.TO_USER:
-                toUserMessages.push()
+                toUserMessages.push(message)
                 break
             case THREAD_MESSAGE_TYPE.FROM_USER:
-                fromUserMessages.push()
+                fromUserMessages.push(message)
                 break
         }
     })

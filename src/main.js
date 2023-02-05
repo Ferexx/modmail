@@ -219,17 +219,6 @@ function initBaseMessageHandlers() {
               await thread.postSystemMessage(`**NOTE:** Could not send auto-response to the user. The error given was: \`${err.message}\``);
             }
           }
-          if (config.verifyMessage) {
-            try {
-              const member = await utils.getMainGuilds().at(0).members.fetch(msg.author.id)
-              if (member.roles.cache.find(role => role.name === 'unverified')) {
-                const verifyMessage = utils.readMultilineConfigValue(config.verifyMessage)
-                await thread.sendSystemMessageToUser(verifyMessage)
-              }
-            } catch (err) {
-              console.log(err)
-            }
-          }
         }
       }
     });
@@ -319,21 +308,13 @@ function initBaseMessageHandlers() {
    */
   bot.on("messageCreate", async msg => {
     const channel = msg.channel
-    if (!utils.messageIsOnMainServer(bot, msg)) return;
+    if (!await utils.messageIsOnMainServer(msg)) return;
     const mentioned = msg.mentions.members
     if (mentioned) {
       if (!msg.mentions.members.some(user => user.id === bot.user.id)) return;
     } else return
     if (msg.author.bot) return;
-
-    if (utils.messageIsOnInboxServer(bot, msg)) {
-      // For same server setups, check if the person who pinged modmail is staff. If so, ignore the ping.
-      if (utils.isStaff(msg.member)) return;
-    } else {
-      // For separate server setups, check if the member is staff on the modmail server
-      const inboxMember = await utils.getInboxGuild().members.fetch(msg.author.id);
-      if (inboxMember && utils.isStaff(inboxMember)) return;
-    }
+    
 
     // If the person who mentioned the bot is blocked, ignore them
     if (await blocked.isBlocked(msg.author.id)) return;
@@ -346,13 +327,13 @@ function initBaseMessageHandlers() {
     const userMentionStr = `**${msg.author.username}#${msg.author.discriminator}** (\`${msg.author.id}\`)`;
 
     if (mainGuilds.length === 1) {
-        content = `${staffMention}Bot mentioned in <#${channel.id}> by ${userMentionStr}: "${msg.content}"\n\n<${msg.link}>`;
+        content = `${staffMention}Bot mentioned in <#${channel.id}> by ${userMentionStr}: "${msg.content}"\n\n<${msg.url}>`;
     } else {
-        content = `${staffMention}Bot mentioned in <#${channel.id}> (${channel.guild.name}) by ${userMentionStr}: "${msg.content}"\n\n<${msg.link}>`;
+        content = `${staffMention}Bot mentioned in <#${channel.id}> (${channel.guild.name}) by ${userMentionStr}: "${msg.content}"\n\n<${msg.url}>`;
     }
 
     content = utils.chunkMessageLines(content);
-    const logChannel = utils.getLogChannel();
+    const logChannel = await utils.getLogChannel();
     for (let i = 0; i < content.length; i++) {
       await logChannel.send({
         content: content[i],

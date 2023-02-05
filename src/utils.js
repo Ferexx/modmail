@@ -89,6 +89,8 @@ function isStaff(member) {
  * @returns {boolean}
  */
 async function messageIsOnInboxServer(msg) {
+  const id = getInboxGuild().id
+  const id2 = msg.guildId
   return getInboxGuild().id === msg.guildId
 }
 
