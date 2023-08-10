@@ -6,21 +6,22 @@ const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 // Place your client and guild ids here
-const clientId = '1041364446242668695';
+const clientId = '1013498455248883802';
+const guildId = '1013505875979276400';
 
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
 	commands.push(command.data.toJSON());
 }
 
-const rest = new REST({ version: '10' }).setToken('MTA0MTM2NDQ0NjI0MjY2ODY5NQ.GF3QYN.FhBhZ-O4UTWoq5ZTnou_lRak-t4_fHPPX53vLA');
+const rest = new REST({ version: '10' }).setToken('MTAxMzQ5ODQ1NTI0ODg4MzgwMg.GDCfKB.XuXcOn6EunphCnSN2b9X4vKvh2OCibd9XrZz54');
 
 (async () => {
 	try {
 		console.log('Started refreshing application (/) commands.');
 
 		await rest.put(
-			Routes.applicationCommands(clientId),
+			Routes.applicationGuildCommands(clientId, guildId),
 			{ body: commands },
 		);
 

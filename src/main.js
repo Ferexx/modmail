@@ -229,7 +229,7 @@ function initBaseMessageHandlers() {
    * 1) If that message was in DMs, and we have a thread open with that user, post the edit as a system message in the thread, or edit the thread message
    * 2) If that message was moderator chatter in the thread, update the corresponding chat message in the DB
    */
-  bot.on("messageUpdate", async (msg, oldMessage) => {
+  bot.on("messageUpdate", async (oldMessage, msg) => {
     if (!msg || !msg.content) return;
 
     const threadMessage = await threads.findThreadMessageByDMMessageId(msg.id);

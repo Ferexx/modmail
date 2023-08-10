@@ -94,7 +94,6 @@ const bot = require("./bot");
  * @callback FormatChatLog
  * @param {Thread} thread
  * @param {ThreadMessage[]} threadMessages
- * @param {FormatLogOptions={}} opts
  * @return {FormatChatLogResult|Promise<FormatChatLogResult>}
  */
 
@@ -222,115 +221,86 @@ const defaultFormatters = {
     return result;
   },
 
-  formatLog(thread, threadMessages, opts = {}) {
-    if (opts.simple) {
-      threadMessages = threadMessages.filter(message => {
-        return (
-          message.message_type !== THREAD_MESSAGE_TYPE.SYSTEM
-          && message.message_type !== THREAD_MESSAGE_TYPE.SYSTEM_TO_USER
-          && message.message_type !== THREAD_MESSAGE_TYPE.CHAT
-          && message.message_type !== THREAD_MESSAGE_TYPE.COMMAND
-        );
-      });
-    }
-
-    const lines = threadMessages.map(message => {
-      // Legacy messages (from 2018) are the entire log in one message, so just serve them as they are
-      if (message.message_type === THREAD_MESSAGE_TYPE.LEGACY) {
-        return message.body;
-      }
-
-      let line = `[${moment.utc(message.created_at).format("YYYY-MM-DD HH:mm:ss")}]`;
-
-      if (opts.verbose) {
-        if (message.dm_channel_id) {
-          line += ` [DM CHA ${message.dm_channel_id}]`;
-        }
-
-        if (message.dm_message_id) {
-          line += ` [DM MSG ${message.dm_message_id}]`;
-        }
-      }
+  formatLog(thread, threadMessages) {
+      const lines = threadMessages.map(message => {
+      let line = `[${moment.utc(message.created_at).format("YYYY-MM-DD HH:mm:ss")}]`
 
       if (message.message_type === THREAD_MESSAGE_TYPE.FROM_USER) {
-        line += ` [FROM USER] [${message.user_name}] ${message.body}`;
+        line += ` [FROM USER] [${message.user_name}] ${message.body}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.TO_USER) {
-        if (opts.verbose) {
-          line += ` [TO USER] [${message.message_number || "0"}] [${message.user_name}]`;
-        } else {
-          line += ` [TO USER] [${message.user_name}]`;
-        }
+          line += ` [TO USER] [${message.user_name}]`
 
-        if (message.use_legacy_format) {
-          // Legacy format (from pre-2.31.0) includes the role and username in the message body, so serve that as is
-          line += ` ${message.body}`;
-        } else if (message.is_anonymous) {
+        if (message.is_anonymous) {
           if (message.role_name) {
-            line += ` (Anonymous) ${message.role_name}: ${message.body}`;
+            line += ` (Anonymous) ${message.role_name}: ${message.body}`
           } else {
-            line += ` (Anonymous) Moderator: ${message.body}`;
+            line += ` (Anonymous) Moderator: ${message.body}`
           }
         } else {
           if (message.role_name) {
-            line += ` (${message.role_name}) ${message.user_name}: ${message.body}`;
+            line += ` (${message.role_name}) ${message.user_name}: ${message.body}`
           } else {
-            line += ` ${message.user_name}: ${message.body}`;
+            line += ` ${message.user_name}: ${message.body}`
           }
         }
       } else if (message.message_type === THREAD_MESSAGE_TYPE.SYSTEM) {
-        line += ` [BOT] ${message.body}`;
+        line += ` [BOT] ${message.body}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.SYSTEM_TO_USER) {
-        line += ` [BOT TO USER] ${message.body}`;
+        line += ` [BOT TO USER] ${message.body}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.CHAT) {
-        line += ` [CHAT] [${message.user_name}] ${message.body}`;
+        line += ` [CHAT] [${message.user_name}] ${message.body}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.COMMAND) {
-        line += ` [COMMAND] [${message.user_name}] ${message.body}`;
+        line += ` [COMMAND] [${message.user_name}] ${message.body}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.REPLY_EDITED) {
         const originalThreadMessage = message.getMetadataValue("originalThreadMessage");
-        line += ` [REPLY EDITED] ${originalThreadMessage.user_name} edited reply ${originalThreadMessage.message_number}:`;
-        line += `\n\nBefore:\n${originalThreadMessage.body}`;
-        line += `\n\nAfter:\n${message.getMetadataValue("newBody")}`;
+        line += ` [REPLY EDITED] ${originalThreadMessage.user_name} edited reply ${originalThreadMessage.message_number}:`
+        line += `<br><br>Before:<br>${originalThreadMessage.body}`
+        line += `<br><br>After:<br>${message.getMetadataValue("newBody")}`
       } else if (message.message_type === THREAD_MESSAGE_TYPE.REPLY_DELETED) {
-        const originalThreadMessage = message.getMetadataValue("originalThreadMessage");
-        line += ` [REPLY DELETED] ${originalThreadMessage.user_name} deleted reply ${originalThreadMessage.message_number}:`;
-        line += `\n\n${originalThreadMessage.body}`;
+        const originalThreadMessage = message.getMetadataValue("originalThreadMessage")
+        line += ` [REPLY DELETED] ${originalThreadMessage.user_name} deleted reply ${originalThreadMessage.message_number}:`
+        line += `<br><br>${originalThreadMessage.body}`
       } else {
-        line += ` [${message.user_name}] ${message.body}`;
+        line += ` [${message.user_name}] ${message.body}`
       }
 
       if (message.attachments.length) {
-        line += "\n\n";
-        line += message.attachments.join("\n");
+        line += "<br><br>"
+        line += message.attachments.join("<br>")
       }
 
-      return line;
-    });
+      return line
+    })
 
+    const htmlHeader = '<!doctype HTML><html><body><p>'
+    const htmlCloser = '</p></body></html>'
     const openedAt = moment(thread.created_at).format("YYYY-MM-DD HH:mm:ss");
-    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.\nView staff chats for this thread by replacing "logs" in the url with "chats"`;
+    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.<br><a href="../chats/${thread.id}">View staff chats for this thread</a>`
 
-    const fullResult = header + "\n\n" + lines.join("\n");
+    const fullResult = htmlHeader + header + "<br><br>" + lines.join("<br>") + htmlCloser
 
     return {
       content: fullResult,
     };
   },
 
-  formatChatLog(thread, threadMessages, opts = {}) {
+  formatChatLog(thread, threadMessages) {
     const lines = threadMessages.map(message => {
-      return `[${moment.utc(message.created_at).format("YYYY-MM-DD HH:mm:ss")}] [${message.user_name}] ${message.body}`
+      return `[${moment.utc(message.created_at).format("YYYY-MM-DD HH:mm:ss")}] [${message.user_name}] ${message.body} ${message.attachments}`
     })
 
+    const htmlHeader = '<!doctype HTML><html><body><p>'
+    const htmlCloser = '</p></body></html>'
     const openedAt = moment(thread.created_at).format("YYYY-MM-DD HH:mm:ss")
-    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.`
+    const header = `# Modmail thread #${thread.thread_number} with ${thread.user_name} (${thread.user_id}) started at ${openedAt}. All times are in UTC+0.<br><a href="../logs/${thread.id}">View logs for this thread</a>`
 
-    const fullResult = header + "\n\n" + lines.join("\n")
+    const fullResult = htmlHeader + header + "<br><br>" + lines.join("<br>") + htmlCloser
 
     return {
       content: fullResult,
     }
   }
-};
+}
 
 /**
  * @type {MessageFormatters}

@@ -240,6 +240,7 @@ class Thread {
       }
     }
 
+    // MOD TO USER
     const rawThreadMessage = new ThreadMessage({
       message_type: THREAD_MESSAGE_TYPE.TO_USER,
       user_id: msg.author.id,
@@ -247,7 +248,7 @@ class Thread {
       body: msg.content,
       is_anonymous: (isAnonymous ? 1 : 0),
       role_name: roleName,
-      attachments: msg.attachments.values(),
+      attachments: msg.attachments.map(att => att.url),
     });
     const threadMessage = await this._addThreadMessageToDB(rawThreadMessage.getSQLProps());
 
@@ -277,11 +278,6 @@ class Thread {
       await this._deleteThreadMessage(threadMessage.id);
       await this.postSystemMessage(`Error while replying to user: ${e}`);
       return false;
-    }
-
-    // Special case: "original" attachments
-    if (config.attachmentStorage === "original") {
-      threadMessage.attachments = dmMessage.attachments.map(att => att.url);
     }
 
     threadMessage.dm_message_id = dmMessage.id;
@@ -383,6 +379,7 @@ class Thread {
     msg.content = msg.content.trim();
 
     // Save DB entry
+    // USER TO MOD
     let threadMessage = new ThreadMessage({
       message_type: THREAD_MESSAGE_TYPE.FROM_USER,
       user_id: this.user_id,
@@ -391,10 +388,9 @@ class Thread {
       is_anonymous: 0,
       dm_message_id: msg.id,
       dm_channel_id: msg.channel.id,
-      attachments: Array.from(msg.attachments.values()),
+      attachments: msg.attachments.map(att => att.url),
       small_attachments: [],
     });
-
     threadMessage = await this._addThreadMessageToDB(threadMessage.getSQLProps());
 
     // Show user reply in the inbox thread
@@ -404,10 +400,16 @@ class Thread {
       content: inboxContent,
       files: Array.from(msg.attachments.values()),
       reply: messageReference,
-      stickers: Array.from(msg.stickers.values())
+    }
+    if (msg.stickers.size > 0) {
+      messagePayload.content += '\n\nSent sticker(s)'
     }
 
-    const inboxMessage = await this._postToThreadChannel(messagePayload);
+    const inboxMessage = await this._postToThreadChannel(messagePayload).catch(error => {
+      if (error.code === 40005) {
+        this.postSystemMessage('User attempted to send an attachment that was too large.')
+      }
+    });
     if (inboxMessage) {
       await this._updateThreadMessage(threadMessage.id, { inbox_message_id: inboxMessage.id });
     }
@@ -559,15 +561,16 @@ class Thread {
    * @returns {Promise<void>}
    */
   async saveChatMessageToLogs(msg) {
-    // TODO: Save attachments?
-    return this._addThreadMessageToDB({
+    // STAFF CHAT
+    return this._addThreadMessageToDB(new ThreadMessage({
       message_type: THREAD_MESSAGE_TYPE.CHAT,
       user_id: msg.author.id,
       user_name: `${msg.author.username}#${msg.author.discriminator}`,
       body: msg.content,
       is_anonymous: 0,
-      dm_message_id: msg.id
-    });
+      dm_message_id: msg.id,
+      attachments: msg.attachments.map(att => att.url)
+    }).getSQLProps());
   }
 
   async saveCommandMessageToLogs(msg) {
@@ -689,7 +692,7 @@ class Thread {
    * @returns {Promise<void>}
    */
   async close(suppressSystemMessage = false, silent = false) {
-    if (! suppressSystemMessage) {
+    if (!suppressSystemMessage) {
       console.log(`Closing thread ${this.id}`);
 
       if (silent) {

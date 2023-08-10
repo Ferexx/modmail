@@ -54,7 +54,7 @@ module.exports = {
             await member.roles.add("1013496081272803414")
         }
         utils.getMainGuilds().at(0).channels.fetch("1013496082338156588")
-            .then(channel => channel.send({ content: "Welcome <@" + thread.user_id + "> to Terra!! Please read our <#1013496082086494321> and grab some <#1013496082086494322>. Feel free to join our voice chats to get to know us!"}))
+            .then(channel => channel.send({ content: "Welcome <@" + thread.user_id + "> to Terra!! Please read our <#1013496082086494321> and grab some <#1013496082086494322>. Feel free to join our voice chats to get to know us! <@&1087586010076037140> please welcome our newwest member"}))
         await interaction.reply('User verified')
     }
 }

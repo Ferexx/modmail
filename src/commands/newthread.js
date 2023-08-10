@@ -9,10 +9,20 @@ module.exports = {
         .addStringOption(option =>
             option.setName('user_id')
                 .setDescription('the id of the user to create the thread with')
-                .setRequired(true)),
+                .setRequired(true))
+        .addStringOption(option =>
+            option.setName('category')
+                .setDescription('the category to create the new channel in')
+                .setRequired(false)),
 
     async execute(interaction) {
-        const userId = interaction.options.getString('user_id')
+        const userId = interaction.options.getString('user_id', true)
+        let category = interaction.options.getString('category', false)
+        if (!category) {
+            category = utils.getInboxGuild().channels.cache.find(channel => channel.name === 'new')
+        } else {
+            category = utils.getInboxGuild().channels.cache.find(channel => channel.name === category)
+        }
         const member = await utils.getMainGuilds().at(0).members.fetch(userId)
         if (!member) {
             interaction.reply('Could not find this user, try again with a real person')
@@ -25,6 +35,7 @@ module.exports = {
         }
 
         thread = await threads.createNewThreadForUser(member.user, {
+            categoryId: category.id,
             ignoreRequirements: true,
             ignoreHooks: true,
             quiet: true,

@@ -20,31 +20,25 @@ async function serveLogs(req, res) {
 
   let threadMessages = (await thread.getThreadMessages()).filter(threadMessage => !threadMessage.isChat());
 
-  const formatLogResult = await formatters.formatLog(thread, threadMessages, {
-    simple: Boolean(req.query.simple),
-    verbose: Boolean(req.query.verbose),
-  });
+  const formatLogResult = await formatters.formatLog(thread, threadMessages);
 
-  const contentType = formatLogResult.extra && formatLogResult.extra.contentType || "text/plain; charset=UTF-8";
-
-  res.set("Content-Type", contentType);
+  res.set('Content-Type', 'text/html');
   res.send(formatLogResult.content);
 }
 
+/**
+ * @param {express.Request} req
+ * @param {express.Response} res
+ */
 async function serveChat(req, res) {
   const thread = await threads.findById(req.params.threadId)
   if (!thread) return notfound(res)
 
   let threadMessages = (await thread.getThreadMessages()).filter(threadMessage => threadMessage.isChat())
 
-  const formatLogResult = await formatters.formatChatLog(thread, threadMessages, {
-    simple: Boolean(req.query.simple),
-    verbose: Boolean(req.query.verbose)
-  })
+  const formatLogResult = await formatters.formatChatLog(thread, threadMessages)
 
-  const contentType = formatLogResult.extra && formatLogResult.extra.contentType || 'text/plain; charset=UTF-8'
-
-  res.set('Content-Type', contentType)
+  res.set('Content-Type', 'text/html')
   res.send(formatLogResult.content)
 }
 
