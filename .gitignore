@@ -5,7 +5,6 @@
 /update.sh
 
 # Config files
-/config.*
 *.config.ini
 config.json
 !/config.example.ini
