@@ -15,7 +15,7 @@ const blocked = require("./data/blocked");
 const threads = require("./data/threads");
 const updates = require("./data/updates");
 
-const { ACCIDENTAL_THREAD_MESSAGES } = require("./data/constants");
+const { ACCIDENTAL_THREAD_MESSAGES, THREAD_STATUS } = require("./data/constants");
 const { ActivityType, ChannelType } = require('discord.js');
 
 let poses = null
@@ -148,7 +148,8 @@ function initBaseMessageHandlers() {
     } else if (!msg.author.bot && config.alwaysReply) {
       // AUTO-REPLY: If config.alwaysReply is enabled, send all chat messages in thread channels as replies
       if (!utils.isStaff(msg.member)) return; // Only staff are allowed to reply
-
+      if (thread.status === THREAD_STATUS.SUSPENDED) return;
+      
       const replied = await thread.replyToUser(msg, config.alwaysReplyAnon || false);
       if (replied) msg.delete();
     } else {
@@ -446,6 +447,18 @@ function getBasePlugins() {
     "file:./src/modules/webserverPlugin",
     "file:./src/modules/typingProxy",
     "file:./src/modules/joinLeaveNotification",
+    "file:./src/modules/alert",
+    "file:./src/modules/block",
+    "file:./src/modules/close",
+    "file:./src/modules/id",
+    "file:./src/modules/logs",
+    "file:./src/modules/move",
+    "file:./src/modules/newthread",
+    "file:./src/modules/notes",
+    "file:./src/modules/reply",
+    "file:./src/modules/roles",
+    "file:./src/modules/suspend",
+    "file:./src/modules/version",
   ];
 }
 
